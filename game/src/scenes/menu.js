@@ -4,6 +4,8 @@ import { Btn } from "../utils/btn";
 
 import { fromEvent } from "rxjs";
 import { debounceTime } from "rxjs/operators";
+import { particleTouch } from "../utils/particleTouch";
+import { theme } from "../core/kaplay/theme";
 
 export function registerMenu() {
     k.scene("menu", () => {
@@ -11,7 +13,8 @@ export function registerMenu() {
         // ==== BACKGROUND =====
         const bg = k.add([
             k.sprite("bg1"),
-            k.scale(0.65)
+            k.scale(0.65),
+            k.fixed()
         ]);
 
         // ==== TITLE ====
@@ -31,11 +34,12 @@ export function registerMenu() {
         });
 
         // ===== OC =====
+        let cottonState = "excited";
         const cotton = k.add([
-            k.sprite("yes"),
+            k.sprite(cottonState),
             k.scale(0.13),
-            k.pos(400, k.height() / 2),
-            k.anchor("left")
+            k.pos(540, k.height() / 2 - 50),
+            k.anchor("center")
         ]);
         // Instruction!
         k.add([
@@ -45,7 +49,8 @@ export function registerMenu() {
                 letterSpacing: 2
             }),
             k.pos(k.width() / 2, k.height() / 2 + 180),
-            k.anchor("center")
+            k.anchor("center"),
+            k.color(theme.lightPink)
         ]);
 
         // ==== START GAME MECHANICS =====
@@ -63,7 +68,8 @@ export function registerMenu() {
                     k.height() / 2 + 250,
                 ),
                 k.anchor("center"),
-                k.opacity(0.4)
+                k.opacity(0.4),
+                k.color(theme.lightPink)
             ])
         );
 
@@ -71,12 +77,65 @@ export function registerMenu() {
         let currentIndex = 0;
         let timeoutSub = null;
 
+        let awaitingConfirm = false;
+        let startBtn = null;
+        let confirmTimer = null;
+
         const key$ = fromEvent(window, "keydown");
         const idle$ = fromEvent(window, "keydown").pipe(
             debounceTime(1500)
         );
 
+        // START GAME
+        function startGame() {
+            const jumpHeight = 60;
+            const startY = cotton.pos.y;
+
+            const tl = gsap.timeline({
+                defaults: { ease: "power2.out" }
+            });
+
+            // Jump
+            tl.to(cotton.pos, {
+                y: startY - jumpHeight,
+                duration: 0.35
+            });
+            // Flip n change
+            tl.to(cotton.scale, {
+                x: -0.13,
+                duration: 0.2,
+                ease: "power2.out",
+                onStart: () => {
+                    cotton.use(k.sprite("yes"));
+                }
+            }, "<");
+            tl.to(cotton.scale, {
+                x: 0.13,
+                duration: 0.15,
+                ease: "power2.out",
+            }, ">-0.05");
+            // Bounce back
+            tl.to(cotton.pos, {
+                y: startY,
+                duration: 0.45,
+                ease: "bounce.out"
+            }, "<");
+
+            tl.fromTo(
+                cotton.scale,
+                { y: 0.12 },
+                {
+                    y: 0.13,
+                    duration: 0.25,
+                    ease: "elastic.out(1, 0.4)",
+                },
+                "-=0.15"
+            );
+
+        }
+
         idle$.subscribe(() => {
+            k.shake(12);
             currentIndex = 0;
             letters.forEach(l => {
                 gsap.to(l, {
@@ -85,6 +144,7 @@ export function registerMenu() {
                     ease: "power2.out",
                 });
             });
+            cotton.use(k.sprite("excited"));
         });
 
         key$.subscribe((e) => {
@@ -99,7 +159,8 @@ export function registerMenu() {
                         duration: 0.15,
                         ease: "power2.out"
                     })
-                })
+                });
+                k.shake(12);
                 return;
             };
 
@@ -107,30 +168,34 @@ export function registerMenu() {
             gsap.to(letters[currentIndex], {
                 opacity: 1,
                 duration: 0.15,
-                ease: "power2.out",
-                onComplete: () => {
-                    currentIndex++
-                    // sfx
-                }
+                ease: "power2.out"
             });
+            currentIndex++;
 
             // finished word
             if (currentIndex === WORD.length) {
+                startGame();
                 if (timeoutSub) timeoutSub.unsubscribe();
-                // startGame();
             }
         });
 
         // ===== UI BUTTON =====
         const tutorialBtn = Btn({
             text: "Tutorial",
-            pos: k.vec2(k.width() - 460, k.height() / 2 - 90)
+            pos: k.vec2(k.width() - 460, k.height() / 2 - 90),
+            color: theme.lightPink
         });
 
         const creditBtn = Btn({
             text: "Credit",
-            pos: k.vec2(k.width() - 460, k.height() / 2 + 30)
+            pos: k.vec2(k.width() - 460, k.height() / 2 + 30),
+            color: theme.lightPink
         });
 
+        // ===== SET PARTICLE TOUCH =====
+        k.onMousePress((pos) => {
+            const mousePos = k.mousePos();
+            particleTouch(mousePos.x, mousePos.y);
+        })
     });
 };

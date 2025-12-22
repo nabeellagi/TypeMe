@@ -7,6 +7,7 @@ export function Btn({
     font = "Ajelins",
     textSize = 36,
     padding = k.vec2(24, 12),
+    color = "#FFFFFF",
     onClick = () => { }
 }) {
 
@@ -24,7 +25,8 @@ export function Btn({
             font,
             size: textSize
         }),
-        k.anchor("center")
+        k.anchor("center"),
+        k.color(color)
     ]);
 
     // ==== BG ====
