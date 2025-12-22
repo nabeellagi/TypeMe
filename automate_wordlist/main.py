@@ -1,23 +1,34 @@
-from pathlib import Path
 from collections import defaultdict
-import os
 
-# Load word list
+# Config
+WORD_CATEGORIES = {
+    "nouns": {
+        "input": "nouns.txt",
+        "output": "../game/src/core/wordlist/nouns.js"
+    },
+    "verbs": {
+        "input": "verbs.txt",
+        "output": "../game/src/core/wordlist/verbs.js"
+    },
+    "adjectives": {
+        "input": "adjectives.txt",
+        "output": "../game/src/core/wordlist/adjectives.js"
+    }
+}
 
+# Load Word List
 def load_words(filename):
     with open(filename, "r", encoding="utf-8") as f:
         return [line.strip().lower() for line in f]
-
 def load_profanity(filename):
     with open(filename, "r", encoding="utf-8") as f:
         return set(line.strip().lower() for line in f)
 
-# Filter
+# Length
 LENGTH_NAME = {
     4: "fourLetters",
     5: "fiveLetters",
-    6: "sixLetters",
-    7: "sevenLetters"
+    6: "sixLetters", 7: "sevenLetters"
 }
 
 # SCORE
@@ -48,6 +59,7 @@ def score_word(word):
     # Safety clamp (never negative)
     return max(score, 1)
 
+# Filter
 def filter_words(words, profanity):
     buckets = {
         4: [],
@@ -55,7 +67,7 @@ def filter_words(words, profanity):
         6: [],
         7: []
     }
-
+    
     for word in words:
         if not word.isalpha():
             continue
@@ -108,7 +120,6 @@ def balance_words(words):
 
     return balanced
 
-
 def apply_limits(buckets):
     for length in buckets:
         buckets[length] = balance_words(buckets[length])
@@ -117,7 +128,7 @@ def apply_limits(buckets):
 def export_js(buckets, output_path):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("// Auto-generated word list\n\n")
-
+        
         for length in sorted(buckets):
             var_name = LENGTH_NAME[length]
             words = buckets[length]
@@ -131,19 +142,26 @@ def export_js(buckets, output_path):
 
             f.write("];\n\n")
 
-# MAIN LOOP
-def main():
-    words = load_words("nounlist.txt")
-    profanity = load_profanity("profanity.txt")
+def process_word_file(input_file, profanity):
+    words = load_words(input_file)
 
     buckets = filter_words(words, profanity)
     normalize_buckets(buckets)
     apply_limits(buckets)
 
-    output_path = "../game/src/core/wordlist/index.js"
-    export_js(buckets, output_path)
+    return buckets
 
-    print("Word list generated successfully.")
+# MAIN LOOP
+def main():
+    profanity = load_profanity("profanity.txt")
+
+    for name, config in WORD_CATEGORIES.items():
+        print(f"Processing {name}...")
+
+        buckets = process_word_file(config["input"], profanity)
+        export_js(buckets, config["output"])
+
+    print("All word lists generated successfully.")
 
 if __name__ == "__main__":
     main()
