@@ -28,7 +28,8 @@ def load_profanity(filename):
 LENGTH_NAME = {
     4: "fourLetters",
     5: "fiveLetters",
-    6: "sixLetters", 7: "sevenLetters"
+    6: "sixLetters", 7: "sevenLetters",
+    8: "eightLetters"
 }
 
 # SCORE
@@ -65,7 +66,8 @@ def filter_words(words, profanity):
         4: [],
         5: [],
         6: [],
-        7: []
+        7: [],
+        8: []
     }
     
     for word in words:

@@ -1,4 +1,5 @@
 import kaplay from "kaplay";
+import { preloadAll } from "./preload";
 
 // ===== INIT KAPLAY =====
 
@@ -12,10 +13,4 @@ export const k = kaplay({
 });
 
 // LOAD ALL ASSETS HERE
-
-const loaders = [];
-
-// FONT
-// SPRITE
-// SFX
-// MUSIC
+preloadAll();
