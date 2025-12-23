@@ -9,7 +9,7 @@ export const k = kaplay({
     crisp: true,
     pixelDensity: 1.2,
     width: 1366,
-    height: 768
+    height: 768,
 });
 
 // LOAD ALL ASSETS HERE

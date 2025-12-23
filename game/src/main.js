@@ -11,5 +11,5 @@ registerCredit();
 // Game phase
 registerChoose();
 
-// k.go("menu");
+k.go("menu");
 k.go("choose")

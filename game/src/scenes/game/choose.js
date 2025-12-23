@@ -1,37 +1,150 @@
 import gsap from "gsap";
 import { k } from "../../core/kaplay";
+import { particleTouch } from "../../utils/particleTouch";
+// import { machineIdle } from "../../utils/machineBounce";
 
 export function registerChoose() {
     k.scene("choose", () => {
-        // Set background
-        k.setBackground(k.rgb(0, 0, 0));
+        // DEBUG MODE
+        // k.debug.inspect = true
+
+        // ==== SPRITE LAYERS ====
+        const layers = {
+            cotton: 10,
+            boxes: 9
+        }
+        // Set tiled floor background
+        const floorWidth = 64;
+        const floorHeight = 64;
+
+        const cols = Math.ceil(k.width() / floorWidth);
+        const rows = Math.ceil(k.height() / floorHeight);
+        const totalTiles = cols * rows;
+
+        for (let index = 0; index < totalTiles; index++) {
+            const i = index % cols;
+            const j = Math.floor(index / cols);
+            k.add([
+                k.sprite("floor1"),
+                k.pos(i * floorWidth, j * floorHeight),
+                k.anchor("topleft"),
+                k.scale(1),
+                k.z(-10),
+            ]);
+        }
+
+        // Dark overlay
+        const overlay = k.add([
+            k.rect(k.width(), k.height()),
+            k.pos(0, 0),
+            k.opacity(0.6),
+            k.color("#100738"),
+            k.anchor("topleft"),
+            k.fixed(),
+        ]);
 
         // ==== SPRITE ====
         // Sprite state
         let spriteProp = {
             facing: "front",
             moving: false,
-            speed: 75,
-            front: ["front0", "front1"],
-            back: ["back0", "back1"],
+            speed: 100,
+            front: ["front0", "front1", "front2"],
+            back: ["back0", "back1", "back2"],
         };
         // Animation prop
         let anim = {
             timer: 0,
             frame: 0,       // 0 or 1
-            speed: 0.18     // seconds per frame
+            speed: 0.08    // seconds per frame
         };
+
+        const higlight = k.add([
+            k.circle(58),
+            k.anchor("center"),
+            k.pos(k.width() / 2, k.height() / 2),
+            k.scale(1),
+            k.opacity(0.6),
+            k.color("#93f5ec"),
+        ]);
 
         // Sprite
         const cotton = k.add([
+            k.pos(k.width() / 2, k.height() / 2),
+            k.anchor("bot"),
+            k.area({
+                shape: new k.Rect(k.vec2(0, 0), 32, 100),
+            }),
+            k.body({ gravityScale: 0 }),
+            k.z(layers.cotton),
+            "player",
+        ]);
+        const cottonSprite = cotton.add([
             k.sprite("front0"),
             k.scale(0.085),
-            k.pos(k.width() / 2, k.height() / 2),
-            k.anchor("center")
+            k.anchor("bot"),
         ]);
+
+
+        // ==== BOX MACHINE ====
+        // box machines parent
+        const boxMachine = {
+            easy: k.add([
+                k.pos(k.width() / 2 - 160, 150),
+                k.anchor("center"),
+                k.area({
+                    shape: new k.Rect(k.vec2(0, -20), 200, 170),
+                }),
+                k.body({ isStatic: true }),
+                k.z(layers.boxes),
+                "machine",
+            ]),
+            hard: k.add([
+                k.pos(k.width() / 2 + 160, 150),
+                k.anchor("center"),
+                k.area({
+                    shape: new k.Rect(k.vec2(0, -20), 200, 170),
+                }),
+                k.body({ isStatic: true }),
+                k.z(layers.boxes),
+                "machine",
+            ])
+        }
+        const boxMachineSprite = {
+            easy: boxMachine.easy.add([
+                k.sprite("box1"),
+                k.anchor("center"),
+                k.scale(2.8),
+            ]),
+            hard: boxMachine.hard.add([
+                k.sprite("box2"),
+                k.anchor("center"),
+                k.scale(2.8),
+            ])
+        };
+        // Box highlight
+        const boxHighlight = {
+            easy: boxMachine.easy.add([
+                k.circle(100),
+                k.anchor("center"),
+                k.pos(0, -25),
+                k.scale(1),
+                k.opacity(0.4),
+                k.z(-1),
+            ]),
+            hard: boxMachine.hard.add([
+                k.circle(100),
+                k.anchor("center"),
+                k.pos(0, -25),
+                k.scale(1),
+                k.opacity(0.4),
+                k.z(-1),
+            ]),
+        };
 
         // ===== UPDATE =====
         k.onUpdate(() => {
+            const dt = k.dt();
 
             // ===== SPRITE MOVE =====
             let dir = k.vec2(0, 0);
@@ -47,18 +160,14 @@ export function registerChoose() {
                 spriteProp.moving = false;
             };
             // Apply movement
-            cotton.pos = cotton.pos.add(
-                dir.scale(spriteProp.speed * k.dt())
-            );
+            cotton.move(dir.scale(spriteProp.speed));
 
             if (dir.y < 0) spriteProp.facing = "back";
             if (dir.y > 0) spriteProp.facing = "front";
-            if (dir.x !== 0) {
-                cotton.flipX = dir.x < 0;
-            }
+
             // Animate sprite
             if (spriteProp.moving) {
-                anim.timer += k.dt();
+                anim.timer += dt;
 
                 if (anim.timer >= anim.speed) {
                     anim.timer = 0;
@@ -73,13 +182,30 @@ export function registerChoose() {
             const spriteName = spriteProp[spriteProp.facing][anim.frame];
 
             if (cotton.sprite !== spriteName) {
-                cotton.use(k.sprite(spriteName));
+                cottonSprite.use(k.sprite(spriteName));
 
                 // re-apply presentation state
                 if (dir.x !== 0) {
-                    cotton.flipX = dir.x < 0;
+                    cottonSprite.flipX = dir.x >= 0;
                 }
             }
+
+            // Highlight follow
+            const highlightTargetPos = cotton.pos.add(0, -10);
+            const highlightSpeed = 2;
+            higlight.pos = higlight.pos.add(
+                highlightTargetPos.sub(higlight.pos).scale(highlightSpeed * dt)
+            );
+
+            // Set world bounds
+            cotton.pos.x = k.clamp(cotton.pos.x, 0, k.width());
+            cotton.pos.y = k.clamp(cotton.pos.y, 130, k.height());
+
         })
+
+        k.onMousePress(() => {
+            const mousePos = k.mousePos();
+            particleTouch(mousePos.x, mousePos.y);
+        });
     });
 }
