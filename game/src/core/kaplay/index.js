@@ -6,10 +6,10 @@ import { preloadAll } from "./preload";
 export const k = kaplay({
     global: false,
     debug: true,
-    crisp:true,
-    pixelDensity:1,
-    width:1366,
-    height:768
+    crisp: true,
+    pixelDensity: 1.2,
+    width: 1366,
+    height: 768
 });
 
 // LOAD ALL ASSETS HERE

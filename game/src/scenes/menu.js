@@ -1,8 +1,8 @@
 import { k } from "../core/kaplay";
 import { gsap } from 'gsap';
-import { Btn } from "../utils/btn";
+import { Btn } from "../ui/btn";
 
-import { fromEvent } from "rxjs";
+import { fromEvent, Subscription } from "rxjs";
 import { debounceTime } from "rxjs/operators";
 import { particleTouch } from "../utils/particleTouch";
 import { theme } from "../core/kaplay/theme";
@@ -77,9 +77,7 @@ export function registerMenu() {
         let currentIndex = 0;
         let timeoutSub = null;
 
-        let awaitingConfirm = false;
-        let startBtn = null;
-        let confirmTimer = null;
+        const subs = new Subscription();
 
         const key$ = fromEvent(window, "keydown");
         const idle$ = fromEvent(window, "keydown").pipe(
@@ -128,56 +126,62 @@ export function registerMenu() {
                     y: 0.13,
                     duration: 0.25,
                     ease: "elastic.out(1, 0.4)",
+                    onComplete: () => {
+                        k.wait(1.2, () => k.go("choose"))
+                    }
                 },
-                "-=0.15"
+                "-=0.15",
             );
+        };
 
-        }
-
-        idle$.subscribe(() => {
-            k.shake(12);
-            currentIndex = 0;
-            letters.forEach(l => {
-                gsap.to(l, {
-                    opacity: 0.4,
-                    duration: 0.15,
-                    ease: "power2.out",
-                });
-            });
-            cotton.use(k.sprite("excited"));
-        });
-
-        key$.subscribe((e) => {
-            const key = e.key.toUpperCase();
-
-            // wrong? reset
-            if (key != WORD[currentIndex]) {
+        subs.add(
+            idle$.subscribe(() => {
+                k.shake(12);
                 currentIndex = 0;
                 letters.forEach(l => {
                     gsap.to(l, {
                         opacity: 0.4,
                         duration: 0.15,
-                        ease: "power2.out"
-                    })
+                        ease: "power2.out",
+                    });
                 });
-                k.shake(12);
-                return;
-            };
+                cotton.use(k.sprite("excited"));
+            })
+        )
 
-            // correct 
-            gsap.to(letters[currentIndex], {
-                opacity: 1,
-                duration: 0.15,
-                ease: "power2.out"
-            });
-            currentIndex++;
+        subs.add(
+            key$.subscribe((e) => {
+                const key = e.key.toUpperCase();
 
-            // finished word
-            if (currentIndex === WORD.length) {
-                startGame();
-                if (timeoutSub) timeoutSub.unsubscribe();
-            }
-        });
+                // wrong? reset
+                if (key != WORD[currentIndex]) {
+                    currentIndex = 0;
+                    letters.forEach(l => {
+                        gsap.to(l, {
+                            opacity: 0.4,
+                            duration: 0.15,
+                            ease: "power2.out"
+                        })
+                    });
+                    k.shake(12);
+                    return;
+                };
+
+                // correct 
+                gsap.to(letters[currentIndex], {
+                    opacity: 1,
+                    duration: 0.15,
+                    ease: "power2.out"
+                });
+                currentIndex++;
+
+                // finished word
+                if (currentIndex === WORD.length) {
+                    startGame();
+                    if (timeoutSub) timeoutSub.unsubscribe();
+                }
+            })
+        )
 
         // ===== UI BUTTON =====
         const tutorialBtn = Btn({
@@ -196,6 +200,11 @@ export function registerMenu() {
         k.onMousePress((pos) => {
             const mousePos = k.mousePos();
             particleTouch(mousePos.x, mousePos.y);
+        });
+
+        // ====== UN SUB =====
+        k.onSceneLeave(() => {
+            subs.unsubscribe();
         })
     });
 };
