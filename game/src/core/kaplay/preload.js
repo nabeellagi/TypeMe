@@ -4,6 +4,7 @@ export function preloadAll() {
     // FONT
     k.loadFont("Kimbab", "fonts/Kimbab.ttf");
     k.loadFont("Ajelins", "fonts/Ajelins.ttf");
+    k.loadFont("Kaph", "fonts/Kaph.ttf");
 
     // SPRITE
 

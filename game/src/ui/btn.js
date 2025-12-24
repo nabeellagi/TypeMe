@@ -8,6 +8,7 @@ export function Btn({
     textSize = 36,
     padding = k.vec2(24, 12),
     color = "#FFFFFF",
+    z,
     onClick = () => { }
 }) {
 
@@ -16,6 +17,7 @@ export function Btn({
         k.pos(pos),
         k.anchor("center"),
         k.scale(1),
+        z ? k.z(z) : k.z(10),
         "btn"
     ]);
 

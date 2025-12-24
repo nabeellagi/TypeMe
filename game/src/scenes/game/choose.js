@@ -1,12 +1,32 @@
 import gsap from "gsap";
 import { k } from "../../core/kaplay";
 import { particleTouch } from "../../utils/particleTouch";
+import { randomGen } from "../../ui/randomGen";
 // import { machineIdle } from "../../utils/machineBounce";
 
 export function registerChoose() {
     k.scene("choose", () => {
         // DEBUG MODE
         // k.debug.inspect = true
+
+        // ==== RESULT =====
+        let machineResult = {
+            normal: {
+                word: null,
+                type: null,
+                completed: false,
+                attempts: 0,
+                locked: false,
+            },
+            reverse: {
+                word: null,
+                type: null,
+                completed: false,
+                attempts: 0,
+                locked: false,
+            }
+        };
+        let isSpinning = false;
 
         // ==== SPRITE LAYERS ====
         const layers = {
@@ -18,12 +38,12 @@ export function registerChoose() {
         const floorHeight = 64;
 
         const cols = Math.ceil(k.width() / floorWidth);
-        const rows = Math.ceil(k.height() / floorHeight);
+        const rows = Math.ceil((k.height()+5) / floorHeight);
         const totalTiles = cols * rows;
 
         for (let index = 0; index < totalTiles; index++) {
             const i = index % cols;
-            const j = Math.floor(index / cols);
+            const j = Math.floor(index / cols) - 1;
             k.add([
                 k.sprite("floor1"),
                 k.pos(i * floorWidth, j * floorHeight),
@@ -31,7 +51,8 @@ export function registerChoose() {
                 k.scale(1),
                 k.z(-10),
             ]);
-        }
+        };
+        k.setBackground("#03021e");
 
         // Dark overlay
         const overlay = k.add([
@@ -87,44 +108,46 @@ export function registerChoose() {
 
 
         // ==== BOX MACHINE ====
-        // box machines parent
+        let nearbyMachine = null;
+        // Box machines parents
         const boxMachine = {
-            easy: k.add([
-                k.pos(k.width() / 2 - 160, 150),
+            normal: k.add([
+                k.pos(k.width() / 2 - 200, 150),
                 k.anchor("center"),
                 k.area({
                     shape: new k.Rect(k.vec2(0, -20), 200, 170),
                 }),
                 k.body({ isStatic: true }),
                 k.z(layers.boxes),
-                "machine",
+                "normalMachine",
             ]),
-            hard: k.add([
-                k.pos(k.width() / 2 + 160, 150),
+            reverse: k.add([
+                k.pos(k.width() / 2 + 200, 150),
                 k.anchor("center"),
                 k.area({
                     shape: new k.Rect(k.vec2(0, -20), 200, 170),
                 }),
                 k.body({ isStatic: true }),
                 k.z(layers.boxes),
-                "machine",
+                "reverseMachine",
             ])
         }
+        // Box machine sprites
         const boxMachineSprite = {
-            easy: boxMachine.easy.add([
+            normal: boxMachine.normal.add([
                 k.sprite("box1"),
                 k.anchor("center"),
                 k.scale(2.8),
             ]),
-            hard: boxMachine.hard.add([
+            reverse: boxMachine.reverse.add([
                 k.sprite("box2"),
                 k.anchor("center"),
                 k.scale(2.8),
             ])
         };
-        // Box highlight
+        // Box Highlight
         const boxHighlight = {
-            easy: boxMachine.easy.add([
+            normal: boxMachine.normal.add([
                 k.circle(100),
                 k.anchor("center"),
                 k.pos(0, -25),
@@ -132,7 +155,7 @@ export function registerChoose() {
                 k.opacity(0.4),
                 k.z(-1),
             ]),
-            hard: boxMachine.hard.add([
+            reverse: boxMachine.reverse.add([
                 k.circle(100),
                 k.anchor("center"),
                 k.pos(0, -25),
@@ -140,6 +163,19 @@ export function registerChoose() {
                 k.opacity(0.4),
                 k.z(-1),
             ]),
+        };
+        // Box Machines Config
+        boxMachine.normal.machineData = {
+            id: "normal",
+            bg: "#4a5be6",
+            lengthRange: [4, 8],
+            types: ["adjective", "noun", "verb"],
+        };
+        boxMachine.reverse.machineData = {
+            id: "reverse",
+            bg: "#df2e05",
+            lengthRange: [4, 8],
+            types: ["adjective", "noun", "verb"],
         };
 
         // ===== UPDATE =====
@@ -203,9 +239,71 @@ export function registerChoose() {
 
         })
 
+        // ===== INTERACTION =====
         k.onMousePress(() => {
             const mousePos = k.mousePos();
             particleTouch(mousePos.x, mousePos.y);
         });
+
+        // Detect player machine proximity
+        cotton.onCollide("normalMachine", (m) => {
+            nearbyMachine = m;
+            console.log(m)
+        });
+        cotton.onCollideEnd("normalMachine", (m) => {
+            if (nearbyMachine?.is("normalMachine")) {
+                nearbyMachine = null;
+            }
+        });
+
+        cotton.onCollide("reverseMachine", (m) => {
+            nearbyMachine = m;
+        });
+        cotton.onCollideEnd("reverseMachine", (m) => {
+            if (nearbyMachine?.is("reverseMachine")) {
+                nearbyMachine = null;
+            }
+        });
+
+        // Interact Z
+        k.onKeyPress("z", async () => {
+            if (!nearbyMachine) return;
+            if (isSpinning) return;
+
+            const id = nearbyMachine.machineData.id;
+            const state = machineResult[id];
+
+            if (state.locked) {
+                k.shake(5);
+                return;
+            }
+
+            if (state.attempts >= 3) {
+                state.locked = true;
+                k.shake(5);
+                return;
+            }
+
+            isSpinning = true;
+
+            const result = await randomGen({
+                machine: nearbyMachine.machineData,
+                attempts: state.attempts,
+            });
+
+            isSpinning = false;
+
+            if (!result) return;
+
+            state.word = result.wordLength;
+            state.type = result.type;
+            state.completed = true;
+            state.attempts++;
+
+            if (state.attempts >= 3) {
+                state.locked = true;
+            }
+        });
+
     });
 }
