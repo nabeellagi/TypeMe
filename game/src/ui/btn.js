@@ -33,12 +33,13 @@ export function Btn({
 
     // ==== BG ====
     const bg = root.add([
-        k.sprite("btn"),
-        k.anchor("center"),
-        k.scale(2),
-        k.area(),
-        k.z(-1)
-    ]);
+    k.sprite("btn"),
+    k.anchor("center"),
+    k.scale(2),
+    k.area(),
+    k.z(-1),
+])
+
 
     // ==== AUTO SIZE =====
     const textWidth = label.width;

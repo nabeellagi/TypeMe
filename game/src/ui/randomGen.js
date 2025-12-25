@@ -27,6 +27,9 @@ export function randomGen({ machine, attempts }) {
             k.opacity(0.5),
         ]);
 
+        // Border 
+        // const border
+
         // Main box
         const box = root.add([
             k.rect(800, 600, { radius: 16 }),

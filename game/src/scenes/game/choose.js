@@ -2,12 +2,16 @@ import gsap from "gsap";
 import { k } from "../../core/kaplay";
 import { particleTouch } from "../../utils/particleTouch";
 import { randomGen } from "../../ui/randomGen";
+import { Btn } from "../../ui/btn";
+import { bgGenerator } from "../../utils/bgGenerator";
 // import { machineIdle } from "../../utils/machineBounce";
 
 export function registerChoose() {
     k.scene("choose", () => {
         // DEBUG MODE
         // k.debug.inspect = true
+        let gameState = "play";
+        let controlsLocked = false;
 
         // ==== RESULT =====
         let machineResult = {
@@ -31,27 +35,15 @@ export function registerChoose() {
         // ==== SPRITE LAYERS ====
         const layers = {
             cotton: 10,
-            boxes: 9
+            boxes: 9,
+            bg: 2
         }
         // Set tiled floor background
-        const floorWidth = 64;
-        const floorHeight = 64;
 
-        const cols = Math.ceil(k.width() / floorWidth);
-        const rows = Math.ceil((k.height()+5) / floorHeight);
-        const totalTiles = cols * rows;
-
-        for (let index = 0; index < totalTiles; index++) {
-            const i = index % cols;
-            const j = Math.floor(index / cols) - 1;
-            k.add([
-                k.sprite("floor1"),
-                k.pos(i * floorWidth, j * floorHeight),
-                k.anchor("topleft"),
-                k.scale(1),
-                k.z(-10),
-            ]);
-        };
+        const floor = bgGenerator({
+            z: layers.bg,
+            sprite: "floor1"
+        });
         k.setBackground("#03021e");
 
         // Dark overlay
@@ -62,6 +54,7 @@ export function registerChoose() {
             k.color("#100738"),
             k.anchor("topleft"),
             k.fixed(),
+            k.z(layers.bg + 1)
         ]);
 
         // ==== SPRITE ====
@@ -69,9 +62,9 @@ export function registerChoose() {
         let spriteProp = {
             facing: "front",
             moving: false,
-            speed: 100,
+            speed: 120,
             front: ["front0", "front1", "front2"],
-            back: ["back0", "back1", "back2"],
+            back: ["back0", "back1", "back2",],
         };
         // Animation prop
         let anim = {
@@ -178,52 +171,145 @@ export function registerChoose() {
             types: ["adjective", "noun", "verb"],
         };
 
+        // ===== CUTSCENE =====
+        async function playCutscene() {
+
+            // 1. shake
+            k.shake(12);
+            await k.wait(0.4);
+
+            // 2. floors disappear
+            floor.element.forEach(f => f.destroy());
+
+            // 3. sprite becomes scared
+            cottonSprite.use(k.sprite("fear"));
+            await k.wait(0.7);
+
+            // 4. cotton fall animation
+            await cottonFall();
+
+            // 5. blip screen
+            await screenBlip();
+
+            // 6. small breathing room
+            await k.wait(0.15);
+
+            // 7. move to next scene with data
+            k.go("typing", { machineResult });
+        }
+
+        async function screenBlip() {
+            const flash = k.add([
+                k.rect(k.width(), k.height()),
+                k.color(k.rgb(0, 0, 0)),
+                k.opacity(0),
+                k.fixed(),
+                k.z(999),
+            ]);
+
+            flash.opacity = 0.9;
+            await k.wait(0.08);
+            flash.opacity = 0;
+
+            flash.destroy();
+        }
+
+        async function cottonFall() {
+            const startY = cotton.pos.y;
+            const endY = k.height() + 200;
+
+            const duration = 1.5;
+            const gravityEase = t => t * t;
+
+            return new Promise(resolve => {
+                let t = 0;
+                gsap.to(cottonSprite, {
+                    angle: 40,
+                    duration: 0.5,
+                    ease: "power2.in"
+                });
+                cotton.onUpdate(() => {
+                    t += k.dt();
+
+                    const p = Math.min(t / duration, 1);
+                    const eased = gravityEase(p);
+
+                    cotton.pos.y = k.lerp(startY, endY, eased);
+                    cotton.opacity = 1 - p * 0.4;
+
+                    if (p >= 1) resolve();
+                });
+            })
+        }
+
+        // ===== START BTN =====
+        // add glow effect to startBtn
+        const startBtn = Btn({
+            text: "Start",
+            pos: k.vec2(k.width() / 2, k.height() - 200),
+            onClick: async () => {
+                if (controlsLocked) return;
+                controlsLocked = true;
+                await playCutscene();
+            }
+        });
+        startBtn.root.hidden = true;
+
+
         // ===== UPDATE =====
         k.onUpdate(() => {
             const dt = k.dt();
 
             // ===== SPRITE MOVE =====
+
             let dir = k.vec2(0, 0);
-            if (k.isKeyDown("left")) dir.x -= 1;
-            if (k.isKeyDown("right")) dir.x += 1;
-            if (k.isKeyDown("up")) dir.y -= 1;
-            if (k.isKeyDown("down")) dir.y += 1;
-            // NORMALIZE MOVE
-            if (dir.len() > 0) {
-                dir = dir.unit();
-                spriteProp.moving = true;
-            } else {
-                spriteProp.moving = false;
-            };
-            // Apply movement
-            cotton.move(dir.scale(spriteProp.speed));
+            if (!controlsLocked) {
+                if (k.isKeyDown("left")) dir.x -= 1;
+                if (k.isKeyDown("right")) dir.x += 1;
+                if (k.isKeyDown("up")) dir.y -= 1;
+                if (k.isKeyDown("down")) dir.y += 1;
 
-            if (dir.y < 0) spriteProp.facing = "back";
-            if (dir.y > 0) spriteProp.facing = "front";
+                // NORMALIZE MOVE
+                if (dir.len() > 0) {
+                    dir = dir.unit();
+                    spriteProp.moving = true;
+                } else {
+                    spriteProp.moving = false;
+                };
+                // Apply movement
+                cotton.move(dir.scale(spriteProp.speed));
 
-            // Animate sprite
-            if (spriteProp.moving) {
-                anim.timer += dt;
+                if (dir.y < 0) spriteProp.facing = "back";
+                if (dir.y > 0) spriteProp.facing = "front";
 
-                if (anim.timer >= anim.speed) {
+                // Animate sprite
+                if (spriteProp.moving) {
+                    anim.timer += dt;
+
+                    if (anim.timer >= anim.speed) {
+                        anim.timer = 0;
+                        anim.frame = (anim.frame + 1) % spriteProp[spriteProp.facing].length;
+                    }
+                } else {
                     anim.timer = 0;
-                    anim.frame = (anim.frame + 1) % spriteProp[spriteProp.facing].length;
+                    anim.frame = 0;
                 }
-            } else {
-                anim.timer = 0;
-                anim.frame = 0;
+
+                // Sprite change
+                const spriteName = spriteProp[spriteProp.facing][anim.frame];
+
+                if (cotton.sprite !== spriteName) {
+                    cottonSprite.use(k.sprite(spriteName));
+
+                    // re-apply presentation state
+                    if (dir.x !== 0) {
+                        cottonSprite.flipX = dir.x >= 0;
+                    }
+                }
             }
-
-            // Sprite change
-            const spriteName = spriteProp[spriteProp.facing][anim.frame];
-
-            if (cotton.sprite !== spriteName) {
-                cottonSprite.use(k.sprite(spriteName));
-
-                // re-apply presentation state
-                if (dir.x !== 0) {
-                    cottonSprite.flipX = dir.x >= 0;
-                }
+            if (controlsLocked) {
+                higlight.hidden = true;
+                Object.values(boxHighlight).every(box => box.hidden = true);
             }
 
             // Highlight follow
@@ -236,7 +322,6 @@ export function registerChoose() {
             // Set world bounds
             cotton.pos.x = k.clamp(cotton.pos.x, 0, k.width());
             cotton.pos.y = k.clamp(cotton.pos.y, 130, k.height());
-
         })
 
         // ===== INTERACTION =====
@@ -267,43 +352,50 @@ export function registerChoose() {
 
         // Interact Z
         k.onKeyPress("z", async () => {
-            if (!nearbyMachine) return;
-            if (isSpinning) return;
+            if (gameState === "play") {
+                if (!nearbyMachine) return;
+                if (isSpinning) return;
 
-            const id = nearbyMachine.machineData.id;
-            const state = machineResult[id];
+                const id = nearbyMachine.machineData.id;
+                const state = machineResult[id];
 
-            if (state.locked) {
-                k.shake(5);
-                return;
-            }
+                if (state.locked) {
+                    k.shake(5);
+                    return;
+                }
 
-            if (state.attempts >= 3) {
-                state.locked = true;
-                k.shake(5);
-                return;
-            }
+                if (state.attempts >= 3) {
+                    state.locked = true;
+                    k.shake(5);
+                    return;
+                }
 
-            isSpinning = true;
+                isSpinning = true;
 
-            const result = await randomGen({
-                machine: nearbyMachine.machineData,
-                attempts: state.attempts,
-            });
+                const result = await randomGen({
+                    machine: nearbyMachine.machineData,
+                    attempts: state.attempts,
+                });
 
-            isSpinning = false;
+                isSpinning = false;
 
-            if (!result) return;
+                if (!result) return;
 
-            state.word = result.wordLength;
-            state.type = result.type;
-            state.completed = true;
-            state.attempts++;
+                state.word = result.wordLength;
+                state.type = result.type;
+                state.completed = true;
+                state.attempts++;
 
-            if (state.attempts >= 3) {
-                state.locked = true;
+                if (state.attempts >= 3) {
+                    state.locked = true;
+                }
+
+                // ===== CHECK IF MACHINE RESULTS ARE COMPLETED =====
+                const allCompleted = Object.values(machineResult).every(m => m.completed);
+                if (allCompleted) {
+                    startBtn.root.hidden = false;
+                }
             }
         });
-
     });
 }

@@ -20,6 +20,8 @@ export function preloadAll() {
     k.loadSprite("back1", "sprites/back1.png");
     k.loadSprite("back2", "sprites/back2.png");
 
+    k.loadSprite("fear", "sprites/fear.png");
+
     k.loadSprite("bg1", "bg/menu.png");
 
     k.loadSprite("btn", "ui/btn.png");

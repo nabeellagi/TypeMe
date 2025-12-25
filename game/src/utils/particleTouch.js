@@ -18,7 +18,8 @@ export function particleTouch(x, y) {
                 size: 16
             }),
             k.opacity(1),
-            k.color(theme.lightPink)
+            k.color(theme.lightPink),
+            k.z(999)
         ]);
 
         const tl = gsap.timeline();
