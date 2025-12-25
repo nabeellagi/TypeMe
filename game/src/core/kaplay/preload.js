@@ -5,6 +5,8 @@ export function preloadAll() {
     k.loadFont("Kimbab", "fonts/Kimbab.ttf");
     k.loadFont("Ajelins", "fonts/Ajelins.ttf");
     k.loadFont("Kaph", "fonts/Kaph.ttf");
+    k.loadFont("Sporty", "fonts/Sporty.otf");
+
 
     // SPRITE
 
@@ -29,6 +31,7 @@ export function preloadAll() {
     k.loadSprite("logo", "logo.png");
 
     k.loadSprite("floor1", "sprites/floor1.png");
+    k.loadSprite("buns", "sprites/buns.png");
 
     k.loadSprite("box1", "sprites/box1.png");
     k.loadSprite("box2", "sprites/box2.png");

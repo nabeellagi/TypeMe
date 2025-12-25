@@ -15,6 +15,6 @@ registerChoose();
 regsiterTyping();
 registerClicker();
 
-// k.go("menu");
-k.go("choose")
+k.go("menu");
+// k.go("choose")
 // k.go("typing");

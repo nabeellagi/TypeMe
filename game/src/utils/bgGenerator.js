@@ -5,9 +5,10 @@ export function bgGenerator({
     floorHeight = 64,
     add = 5,
     z = -10,
-    sprite
+    sprite,
+    scale=1
 }) {
-    const cols = Math.ceil(k.width() / floorWidth);
+    const cols = Math.ceil((k.width() + add) / floorWidth);
     const rows = Math.ceil((k.height() + add) / floorHeight);
 
     const totalTiles = cols * rows;
@@ -28,6 +29,8 @@ export function bgGenerator({
             k.sprite(sprite),
             k.pos(i * floorWidth, j * floorHeight),
             k.anchor("topleft"),
+            k.scale(scale),
+            k.rotate(0)
         ]);
 
         floors.push(floorSprite);
