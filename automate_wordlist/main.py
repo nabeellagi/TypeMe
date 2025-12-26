@@ -101,8 +101,8 @@ def normalize_buckets(buckets):
         )
 
 # Limits
-MAX_PER_LENGTH = 100
-MAX_PER_START_LETTER = 8
+MAX_PER_LENGTH = 200
+MAX_PER_START_LETTER = 10
 
 def balance_words(words):
     start_count = defaultdict(int)
