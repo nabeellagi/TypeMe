@@ -3,11 +3,11 @@ import { k } from "../../core/kaplay";
 import { WORDLIST } from "../../core/wordlist";
 import { bgGenerator } from "../../utils/bgGenerator";
 import { fromEvent, Subscription } from "rxjs";
+import { particleTouch } from "../../utils/particleTouch";
 
 /**
-Typo words will be collected
-Hearts will be reduced when time out per words. 
-*/
+HELPERS
+ */
 
 const LENGTH_KEY_MAP = {
     4: "fourLetters",
@@ -42,8 +42,12 @@ function pickRandomWord(wordList) {
     return wordList[idx]; // { word, score }
 }
 
+function mirrorIndexes(indexes, length) {
+    return indexes.map(i => length - 1 - i);
+}
+
 function preFilledIndexes(length) {
-    const count = Math.ceil(length / 2) - 1;
+    const count = Math.ceil(length / 2) - k.choose([0, 1]);
     const indexes = new Set();
 
     while (indexes.size < count) {
@@ -51,6 +55,11 @@ function preFilledIndexes(length) {
     }
 
     return [...indexes];
+}
+
+function getPhaseDuration(length) {
+    if (length <= 5) return 80;
+    return 95;
 }
 
 export function regsiterTyping() {
@@ -68,7 +77,7 @@ export function regsiterTyping() {
                 locked: false,
             },
             reverse: {
-                word: 8,
+                word: 4,
                 type: "verb",
                 completed: true,
                 attempts: 1,
@@ -79,7 +88,7 @@ export function regsiterTyping() {
 
         // ==== READ INPUT ====
         const subs = new Subscription();
-        const key$ = fromEvent("keydown", window)
+        let inputCursor = 0;
 
         // ===== GAME STATE =====
         const GAME_STATE = {
@@ -91,6 +100,7 @@ export function regsiterTyping() {
         let gameState = GAME_STATE.INTRO;
 
         let typoWords = [];
+        let bannedWords = [];
 
         // Countdown
         let countdown = 3;
@@ -98,7 +108,7 @@ export function regsiterTyping() {
         // ===== SPRITE LAYERS =====
         const spriteLayer = {
             bg: 9,
-            cotton: 10,
+            cotton: 100,
             uiLayer: 11
         };
 
@@ -125,8 +135,13 @@ export function regsiterTyping() {
         console.log(currentEntry)
 
         revealedIndexes = preFilledIndexes(currentWord.length);
+        if (currentPart === "reverse") {
+            revealedIndexes = mirrorIndexes(revealedIndexes, currentWord.length);
+        }
+
         // console.log(revealedIndexes)
         playerInput = "";
+        let expectedWord = "";
 
         const randomizedLetters = shuffleArray(currentWord.split("")).join("");
 
@@ -144,11 +159,11 @@ export function regsiterTyping() {
         const overlay = k.add([
             k.rect(k.width(), k.height()),
             k.pos(0, 0),
-            k.opacity(0.6),
+            k.opacity(0.92),
             k.color("#100738"),
             k.anchor("topleft"),
             k.fixed(),
-            k.z(spriteLayer.bg + 1)
+            k.z(99)
         ]);
 
         // ===== COTTON SPRITE FALL=====
@@ -178,7 +193,10 @@ export function regsiterTyping() {
             ease: "power2.out"
         }, "<");
         cottonTl.eventCallback("onComplete", () => {
+            overlay.z = spriteLayer.bg + 1;
             overlay.opacity = 0.85
+            startPhaseTimer();
+            nextWord();
         })
 
         // ===== MAIN INTERFACE =====
@@ -250,66 +268,206 @@ export function regsiterTyping() {
                     index: i,
                     char,
                     revealed,
-                    filled: revealed,
+                    filled: false,
                 });
             });
         }
-        renderBoxes(currentWord, revealedIndexes);
 
         // Find empty boxes
         function getNextEmptyBox() {
-            return boxes.find(b => !b.filled);
+            const orderedBoxes = currentPart === "reverse"
+                ? [...boxes].reverse()
+                : boxes;
+
+            return orderedBoxes.find(b => !b.filled) ?? null;
         }
-        // Handle Typo
-        function checkWordComplete() {
-            const done = boxes.every(b => b.filled);
-            if (done) {
-                score += currentEntry.score;
-                nextWord();
+
+        // Word Timer
+        let wordTime = 20 - result.normal.length;
+        let wordTimerActive = false;
+
+        function startWordTimer() {
+            wordTime = 20 - result.normal.length;
+            wordTimerActive = true;
+            timerText.text = `TIME ${wordTime}`;
+        }
+
+        function stopWordTimer() {
+            wordTimerActive = false;
+        };
+
+        // Phase Timer
+        let phaseTime = 0;
+        let phaseTimerActive = false;
+
+        function startPhaseTimer() {
+            const length = currentPart === "normal"
+                ? result.normal.length
+                : result.reverse.length;
+
+            phaseTime = getPhaseDuration(length);
+
+            phaseTimerActive = true;
+            phaseTimerText.text = formatTime(phaseTime)
+        }
+        function stopPhaseTimer() {
+            phaseTimerActive = false;
+        }
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = Math.ceil(sec % 60);
+            return `${m}:${s.toString().padStart(2, "0")}`;
+        };
+
+        function onPhaseTimeout() {
+            if (currentPart === "normal") {
+                // SWITCH TO REVERSE YA
+                currentPart = "reverse";
+                partText.text = "PHASE TWO";
+
+                stopWordTimer();
+                stopPhaseTimer();
+
+                // COOLDOWN
+                inputLocked = true;
+                k.wait(0.8, () => {
+                    startPhaseTimer();
+                    nextWord();
+                    inputLocked = false;
+                })
+            } else {
+                endGame();
             }
         }
 
+        // Check Word Complete
+        function checkWordComplete() {
+            const done = boxes.every(b => b.filled);
+            if (done) {
+                stopWordTimer();
+                score += currentEntry.score;
+                scoreText.text = `Your current score : ${score}`;
+                k.wait(0.5, () => {
+                    nextWord();
+                });
+            }
+        }
+        function setupWord(entry) {
+            currentEntry = entry;
+            currentWord = entry.word.toUpperCase();
+
+            expectedWord = currentPart === "reverse"
+                ? currentWord.split("").reverse().join("")
+                : currentWord;
+
+            revealedIndexes = preFilledIndexes(currentWord.length);
+            renderBoxes(currentWord, revealedIndexes);
+
+            inputCursor = 0;
+
+            const scrambled = shuffleArray(currentWord.split(""));
+            randomText.text = currentPart === "reverse"
+                ? scrambled.reverse().join("")
+                : scrambled.join("");
+
+            startWordTimer();
+        }
+
+        // Typo Check
         function registerTypo() {
             typoWords.push(currentWord);
             k.shake(3);
-            nextWord();
+
+            inputLocked = true;
+            stopWordTimer();
+
+            randomText.text = currentWord
+            randomText.opacity = 0.5;
+
+            k.wait(0.7, () => {
+                randomText.opacity = 1;
+                inputLocked = false;
+                nextWord();
+            });
         }
 
         // Handle next word
+        // Bug fix
+        function pickNonRepeatingWord(wordList, bannedWords = []) {
+            const pool = wordList.filter(
+                w => !bannedWords.includes(w.word.toUpperCase())
+            );
+
+            // Fallback: if everything is banned, allow reuse
+            const safePool = pool.length > 0 ? pool : wordList;
+
+            return pickRandomWord(safePool);
+        }
+
         function nextWord() {
-            currentEntry = pickRandomWord(result.normal.wordList);
-            currentWord = currentEntry.word.toUpperCase();
+            stopWordTimer();
 
-            revealedIndexes = preFilledIndexes(currentWord.length);
+            bannedWords.push(currentWord);
 
-            renderBoxes(currentWord, revealedIndexes);
+            const pool = currentPart === "normal"
+                ? result.normal.wordList
+                : result.reverse.wordList;
 
-            randomText.text = shuffleArray(currentWord.split("")).join("");
+            const banned = [
+                currentWord,
+                ...bannedWords
+            ];
+
+            setupWord(pickNonRepeatingWord(pool, banned));
         }
 
         // Handle letter
+        let inputLocked = false;
         function handleLetter(letter) {
+            if (inputLocked) return;
+
             const target = getNextEmptyBox();
             if (!target) return;
 
-            if (letter === target.char) {
+            const expectedChar = expectedWord[inputCursor];
+
+            if (letter === expectedChar) {
                 fillBox(target, letter);
+                inputCursor++;
                 checkWordComplete();
             } else {
                 registerTypo();
             }
         }
+
         function fillBox(box, letter) {
+            box.entity.opacity = 1;
+
             box.entity.add([
                 k.text(letter, {
                     size: 36,
                     font: "Ajelins"
                 }),
-                k.color("#dcff14"),
+                k.color("#14fbff"),
                 k.anchor("center"),
             ]);
+
             box.filled = true;
-        };
+            
+            // animate
+            particleTouch(box.entity.pos.x, box.entity.pos.y);
+            const initY = box.entity.pos.y;
+
+            const tl = gsap.timeline();
+            tl.to(box.entity.pos, {
+                y: initY-25,
+                ease: "power2.out"
+            });
+            tl.to(box.entity.pos, {
+                y: initY-10,
+                ease: "power1.out" 
+            })
+        }
         subs.add(
             fromEvent(window, "keydown").subscribe(e => {
                 if (e.key.length !== 1) return;
@@ -319,10 +477,43 @@ export function regsiterTyping() {
             })
         );
 
+        // end game
+        function endGame() {
+            stopWordTimer();
+            stopPhaseTimer();
+
+            alert(
+                `FINAL SCORE: ${score}\n\nTYPO WORDS:\n${typoWords.join(", ")}`
+            );
+        }
+
         // TIMER
-        const timerType = k.add([
-            k.text("")
-        ])
+        const timerText = k.add([
+            k.text("Type to start", {
+                font: "Ajelins"
+            }),
+            k.pos(450, k.height() - 200),
+            k.anchor("center"),
+            k.z(spriteLayer.uiLayer)
+        ]);
+
+        const phaseTimerText = k.add([
+            k.text("1:20", { font: "Ajelins", size: 32 }),
+            k.pos(k.width() / 2 + 320, 90),
+            k.anchor("center"),
+            k.z(spriteLayer.uiLayer)
+        ]);
+
+        // SCORE TEXT
+        const scoreText = k.add([
+            k.text(`Your current score : ${score}`, {
+                font: "Ajelins",
+                size: 25
+            }),
+            k.pos(k.width() / 2, 135),
+            k.anchor("center"),
+            k.z(spriteLayer.uiLayer)
+        ]);
 
         // ===== UPDATE LOOP =====
         const STEP = 90;       // rotation step
@@ -331,15 +522,37 @@ export function regsiterTyping() {
 
         k.onUpdate(() => {
 
-            timer += k.dt();
+            // === WORD TIMER ===
+            if (wordTimerActive) {
+                wordTime -= k.dt();
+                timerText.text = `TIME ${Math.ceil(wordTime)}`;
 
+                if (wordTime <= 0) {
+                    wordTimerActive = false;
+                    registerTypo();
+                }
+            };
+
+            // === PHASE TIMER ===
+            if (phaseTimerActive) {
+                phaseTime -= k.dt();
+                phaseTimerText.text = formatTime(phaseTime);
+
+                if (phaseTime <= 0) {
+                    phaseTimerActive = false;
+                    onPhaseTimeout();
+                }
+            }
+
+            // === BACKGROUND ROTATION ===
+            timer += k.dt();
             if (timer >= INTERVAL) {
                 timer = 0;
-
                 floor.element.forEach(el => {
                     el.angle = (el.angle + STEP) % 360;
                 });
             }
         });
+
     });
 }

@@ -19,7 +19,8 @@ export function particleTouch(x, y) {
             }),
             k.opacity(1),
             k.color(theme.lightPink),
-            k.z(999)
+            k.z(999),
+            k.anchor("center")
         ]);
 
         const tl = gsap.timeline();

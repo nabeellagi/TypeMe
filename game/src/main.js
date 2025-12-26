@@ -17,4 +17,4 @@ registerClicker();
 
 k.go("menu");
 // k.go("choose")
-// k.go("typing");
+k.go("typing");
