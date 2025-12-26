@@ -3,7 +3,9 @@ import { k } from "../../core/kaplay";
 import { WORDLIST } from "../../core/wordlist";
 import { bgGenerator } from "../../utils/bgGenerator";
 import { fromEvent, Subscription } from "rxjs";
+import * as Tone from "tone";
 import { particleTouch } from "../../utils/particleTouch";
+import { bonusClicker } from "../../ui/bonusClicker";
 
 /**
 HELPERS
@@ -16,6 +18,20 @@ const LENGTH_KEY_MAP = {
     7: "sevenLetters",
     8: "eightLetters"
 };
+
+const SCALE = [
+    "C4", // Do
+    "D4", // Re
+    "E4", // Mi
+    "F4", // Fa
+    "G4", // So
+    "A4", // La
+    "B4", // Ti
+    "C5", // High Do
+];
+
+let scaleIndex = 0;
+let scaleDir = 1;
 
 function resolvedWord({ word, type }) {
     if (!type || !word) return null;
@@ -58,8 +74,14 @@ function preFilledIndexes(length) {
 }
 
 function getPhaseDuration(length) {
-    if (length <= 5) return 80;
-    return 95;
+    if (length <= 5) return 90;
+    return 105;
+}
+
+function getWordTimer(length){
+    if(length === 4) return 12;
+    if(length === 5 || length === 6) return 15;
+    if(length > 6) return 18;
 }
 
 export function regsiterTyping() {
@@ -88,16 +110,27 @@ export function regsiterTyping() {
 
         // ==== READ INPUT ====
         const subs = new Subscription();
+        let inputLocked = false;
         let inputCursor = 0;
 
+        // ==== TONE SET UP ====
+        const synth = new Tone.Synth({
+            volume: -12,
+            oscillator: { type: "sine" }
+        }).toDestination();
+
         // ===== GAME STATE =====
-        const GAME_STATE = {
-            INTRO: "intro",
-            PART1: "part1",
-            PART2: "part2",
-            FINISHED: "finished"
-        }
-        let gameState = GAME_STATE.INTRO;
+        // const GAME_STATE = {
+        //     INTRO: "intro",
+        //     PART1: "part1",
+        //     PART2: "part2",
+        //     FINISHED: "finished"
+        // }
+        // let gameState = GAME_STATE.INTRO;
+
+        let correctStreak = 0;
+        // let bonusCooldown = false;
+        let activeBonuses = 0;
 
         let typoWords = [];
         let bannedWords = [];
@@ -126,7 +159,6 @@ export function regsiterTyping() {
         let currentWord = "";
 
         let revealedIndexes = [];
-        let playerInput = "";
         let score = 0;
 
         // HELPERS
@@ -140,7 +172,7 @@ export function regsiterTyping() {
         }
 
         // console.log(revealedIndexes)
-        playerInput = "";
+        // playerInput = "";
         let expectedWord = "";
 
         const randomizedLetters = shuffleArray(currentWord.split("")).join("");
@@ -195,8 +227,9 @@ export function regsiterTyping() {
         cottonTl.eventCallback("onComplete", () => {
             overlay.z = spriteLayer.bg + 1;
             overlay.opacity = 0.85
-            startPhaseTimer();
-            nextWord();
+            // startPhaseTimer();
+            // nextWord();
+            startPhase();
         })
 
         // ===== MAIN INTERFACE =====
@@ -283,7 +316,7 @@ export function regsiterTyping() {
         }
 
         // Word Timer
-        let wordTime = 20 - result.normal.length;
+        let wordTime = getWordTimer(safeMachineResult.normal.length);
         let wordTimerActive = false;
 
         function startWordTimer() {
@@ -319,39 +352,138 @@ export function regsiterTyping() {
             return `${m}:${s.toString().padStart(2, "0")}`;
         };
 
+        // Phase manager
+        function startPhase() {
+            stopWordTimer();
+            stopPhaseTimer();
+
+            inputLocked = false;
+            bannedWords = [];
+
+            startPhaseTimer();
+            nextWord();
+        }
+
         function onPhaseTimeout() {
             if (currentPart === "normal") {
-                // SWITCH TO REVERSE YA
+
                 currentPart = "reverse";
                 partText.text = "PHASE TWO";
 
                 stopWordTimer();
                 stopPhaseTimer();
 
-                // COOLDOWN
                 inputLocked = true;
-                k.wait(0.8, () => {
-                    startPhaseTimer();
-                    nextWord();
-                    inputLocked = false;
-                })
+                overlay.z = spriteLayer.uiLayer + 7;
+                overlay.opacity = 1;
+
+                // === LETTER FALL TRANSITION ===
+                phaseLetters.forEach((letter, i) => {
+                    letter.opacity = 1;
+                    letter.pos.y = -120;
+
+                    gsap.to(letter.pos, {
+                        y: k.height() / 2,
+                        delay: i * 0.06,
+                        duration: 0.6,
+                        ease: "power2.out",
+                    });
+
+                    gsap.fromTo(letter, {
+                        opacity: 0
+                    }, {
+                        opacity: 1,
+                        delay: i * 0.06,
+                        duration: 0.3,
+                    });
+                });
+
+                // === EXIT BLIP ===
+                k.wait(1.2, () => {
+                    phaseLetters.forEach((letter, i) => {
+                        gsap.to(letter.pos, {
+                            y: k.height() + 120,
+                            delay: i * 0.04,
+                            duration: 0.45,
+                            ease: "power2.in",
+                        });
+
+                        gsap.to(letter, {
+                            opacity: 0,
+                            delay: i * 0.04 + 0.2,
+                            duration: 0.2,
+                        });
+                    });
+                });
+
+                // === RESUME GAME ===
+                k.wait(2, () => {
+                    overlay.z = spriteLayer.bg + 1;
+                    overlay.opacity = 0.85;
+                    startPhase();
+                });
+
             } else {
                 endGame();
+            }
+        }
+        // ==== BONUS CLICKER ====
+        function triggerBonus() {
+            const count = k.rand(1, 4); // 1–3 clickers
+            activeBonuses = count;
+
+            for (let i = 0; i < count; i++) {
+                k.wait(i * 0.15, () => {
+                    bonusClicker(
+                        (bonus) => {
+                            if (bonus.value === "MULTIPLY") {
+                                score *= 2;
+                            } else {
+                                score += bonus.value;
+                            }
+
+                            scoreText.text = `Your current score : ${score}`;
+                            activeBonuses--;
+
+                            if (activeBonuses <= 0) {
+                                correctStreak = 0;
+                            }
+                        },
+                        () => {
+                            // expired
+                            activeBonuses--;
+
+                            if (activeBonuses <= 0) {
+                                correctStreak = 0;
+                            }
+                        }
+                    );
+                });
             }
         }
 
         // Check Word Complete
         function checkWordComplete() {
             const done = boxes.every(b => b.filled);
-            if (done) {
-                stopWordTimer();
-                score += currentEntry.score;
-                scoreText.text = `Your current score : ${score}`;
-                k.wait(0.5, () => {
-                    nextWord();
-                });
+            if (!done) return;
+
+            stopWordTimer();
+
+            score += currentEntry.score;
+            scoreText.text = `Your current score : ${score}`;
+
+            correctStreak++;
+
+            if (correctStreak === 2) {
+                triggerBonus();
+                correctStreak = 0;
             }
+
+            k.wait(0.5, () => {
+                nextWord();
+            });
         }
+
         function setupWord(entry) {
             currentEntry = entry;
             currentWord = entry.word.toUpperCase();
@@ -378,6 +510,9 @@ export function regsiterTyping() {
             typoWords.push(currentWord);
             k.shake(3);
 
+            correctStreak = 0;
+            // bonusCooldown = false;
+
             inputLocked = true;
             stopWordTimer();
 
@@ -389,6 +524,9 @@ export function regsiterTyping() {
                 inputLocked = false;
                 nextWord();
             });
+
+            score -= 2;
+            scoreText.text = `Your current score : ${score}`;
         }
 
         // Handle next word
@@ -422,7 +560,6 @@ export function regsiterTyping() {
         }
 
         // Handle letter
-        let inputLocked = false;
         function handleLetter(letter) {
             if (inputLocked) return;
 
@@ -453,29 +590,56 @@ export function regsiterTyping() {
             ]);
 
             box.filled = true;
-            
+
             // animate
             particleTouch(box.entity.pos.x, box.entity.pos.y);
             const initY = box.entity.pos.y;
 
             const tl = gsap.timeline();
             tl.to(box.entity.pos, {
-                y: initY-25,
+                y: initY - 25,
                 ease: "power2.out"
             });
             tl.to(box.entity.pos, {
-                y: initY-10,
-                ease: "power1.out" 
+                y: initY - 10,
+                ease: "power1.out"
             })
+
+            // Sound
+            const note = SCALE[scaleIndex];
+            const velocity = 0.5 + Math.random() * 0.2;
+            synth.triggerAttackRelease(note, "16n", Tone.now(), velocity);
+            scaleIndex += scaleDir;
+
+            if (scaleIndex === SCALE.length - 1 || scaleIndex === 0) {
+                scaleDir *= -1;
+            }
         }
+        // subs.add(
+        //     fromEvent(window, "keydown").subscribe(e => {
+        //         if (e.key.length !== 1) return;
+
+        //         const letter = e.key.toUpperCase();
+        //         handleLetter(letter);
+        //     })
+        // );
+        let audioReady = false;
+
         subs.add(
-            fromEvent(window, "keydown").subscribe(e => {
+            fromEvent(window, "keydown").subscribe(async e => {
+
+                if (!audioReady) {
+                    await Tone.start();
+                    audioReady = true;
+                }
+
                 if (e.key.length !== 1) return;
 
                 const letter = e.key.toUpperCase();
                 handleLetter(letter);
             })
         );
+
 
         // end game
         function endGame() {
@@ -514,6 +678,27 @@ export function regsiterTyping() {
             k.anchor("center"),
             k.z(spriteLayer.uiLayer)
         ]);
+
+        const phaseLetters = [];
+        const PHASE_TEXT = "PHASE TWO";
+
+        const letterGap = 60;
+        const startX = k.width() / 2 - ((PHASE_TEXT.length - 1) * letterGap) / 2;
+
+        PHASE_TEXT.split("").forEach((char, i) => {
+            const letter = k.add([
+                k.text(char, {
+                    font: "Kaph",
+                    size: 72
+                }),
+                k.pos(startX + i * letterGap, -100),
+                k.anchor("center"),
+                k.opacity(1),
+                k.z(999),
+            ]);
+
+            phaseLetters.push(letter);
+        });
 
         // ===== UPDATE LOOP =====
         const STEP = 90;       // rotation step
@@ -554,5 +739,14 @@ export function regsiterTyping() {
             }
         });
 
+        // k.onSceneLeave(() => {
+        //     subs.unsubscribe();
+        // })
     });
 }
+
+/**
+
+
+*/
+

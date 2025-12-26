@@ -10,7 +10,8 @@
 	"dependencies": {
 		"gsap": "^3.14.2",
 		"kaplay": "^3001.0.19",
-		"rxjs": "^7.8.2"
+		"rxjs": "^7.8.2",
+		"tone": "^15.1.22"
 	},
 	"devDependencies": {
 		"@types/node": "^25.0.3",
