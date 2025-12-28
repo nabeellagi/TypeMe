@@ -24,6 +24,13 @@ export function preloadAll() {
 
     k.loadSprite("fear", "sprites/fear.png");
 
+    k.loadSprite("smile", "sprites/smile.png");
+    k.loadSprite("gasp", "sprites/gasp.png");
+    k.loadSprite("annoyed", "sprites/annoyed.png");
+    k.loadSprite("serious", "sprites/serious.png");
+    k.loadSprite("sweat", "sprites/sweat.png");
+    k.loadSprite("hope", "sprites/hope.png");
+
     k.loadSprite("bg1", "bg/menu.png");
 
     k.loadSprite("btn", "ui/btn.png");

@@ -1,5 +1,7 @@
 import gsap from "gsap";
 import { k } from "../core/kaplay";
+import { particleTouch } from "../utils/particleTouch";
+import { MonoSynth } from "tone";
 
 const BONUS_POOL = [
     { label: "+4", value: 4, weight: 2 },
@@ -8,7 +10,7 @@ const BONUS_POOL = [
     { label: "-3", value: -3, weight: 3 },
     { label: "-4", value: -4, weight: 3 },
     { label: "-5", value: -5, weight: 2 },
-    { label: "x2", value: "MULTIPLY", weight: 0.5 },
+    { label: "x2", value: "MULTIPLY", weight: 0.6 },
 ];
 
 function weightedPick(pool) {
@@ -66,6 +68,9 @@ export function bonusClicker(onResolve) {
     label.onClick(() => {
         onResolve(bonus);
         destroy();
+        // particle
+        const mousePos = k.mousePos().clone();
+        particleTouch(mousePos.x, mousePos.y);
     });
 
     // Timeout auto-remove

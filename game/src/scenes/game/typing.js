@@ -6,6 +6,7 @@ import { fromEvent, Subscription } from "rxjs";
 import * as Tone from "tone";
 import { particleTouch } from "../../utils/particleTouch";
 import { bonusClicker } from "../../ui/bonusClicker";
+import { bombTyper } from "../../ui/bombTyper";
 
 /**
 HELPERS
@@ -63,7 +64,7 @@ function mirrorIndexes(indexes, length) {
 }
 
 function preFilledIndexes(length) {
-    const count = Math.ceil(length / 2) - k.choose([0, 1]);
+    const count = Math.ceil(length / 2) + 1;
     const indexes = new Set();
 
     while (indexes.size < count) {
@@ -78,10 +79,10 @@ function getPhaseDuration(length) {
     return 105;
 }
 
-function getWordTimer(length){
-    if(length === 4) return 12;
-    if(length === 5 || length === 6) return 15;
-    if(length > 6) return 18;
+function getWordTimer(length) {
+    if (length === 4) return 8;
+    if (length === 5 || length === 6) return 10;
+    if (length > 6) return 12;
 }
 
 export function regsiterTyping() {
@@ -131,6 +132,9 @@ export function regsiterTyping() {
         let correctStreak = 0;
         // let bonusCooldown = false;
         let activeBonuses = 0;
+
+        let activeBombs = [];
+        let bombSchedulerActive = false;
 
         let typoWords = [];
         let bannedWords = [];
@@ -198,7 +202,7 @@ export function regsiterTyping() {
             k.z(99)
         ]);
 
-        // ===== COTTON SPRITE FALL=====
+        // ===== COTTON SPRITE =====
         const cotton = k.add([
             k.pos(k.width() / 2, -100),
             k.anchor("center"),
@@ -213,6 +217,21 @@ export function regsiterTyping() {
         ]);
         const cottonTl = gsap.timeline();
 
+        // ==== COTTON REACT SPRITE ====
+        const cottonReactFinalY = k.height() - 280;
+        let isSweat = false;
+        const cottonReact = k.add([
+            k.anchor("center"),
+            k.z(spriteLayer.uiLayer),
+            k.pos(k.width()/2 + 220, k.height() + 160),
+            k.rotate(0)
+        ])
+        const cottonReactSprite = cottonReact.add([
+            k.sprite("smile"),
+            k.scale(0.12)
+        ]);
+
+        // ==== COTTON SPRITE ANIM FALL ====
         // Entrance fall
         cottonTl.to(cotton.pos, {
             y: k.height() + 55,
@@ -229,9 +248,24 @@ export function regsiterTyping() {
             overlay.opacity = 0.85
             // startPhaseTimer();
             // nextWord();
-            startPhase();
-        })
 
+            gsap.to(cottonReact.pos, {
+                y: cottonReactFinalY,
+                duration: 0.6,
+                ease: "power2.out",
+                delay: 0.1
+            });
+            gsap.fromTo(cottonReact, 
+                { angle : -40 },
+                {
+                    angle : 0,
+                    duration: 0.8,
+                    ease: "power3.out"
+                },
+                "<"
+            )
+            startPhase();
+        });
         // ===== MAIN INTERFACE =====
 
         // ==== TITLE ====
@@ -316,11 +350,12 @@ export function regsiterTyping() {
         }
 
         // Word Timer
-        let wordTime = getWordTimer(safeMachineResult.normal.length);
+        let wordTime = getWordTimer(currentWord.length);
+        console.log(wordTime)
         let wordTimerActive = false;
 
         function startWordTimer() {
-            wordTime = 20 - result.normal.length;
+            wordTime = getWordTimer(currentWord.length);
             wordTimerActive = true;
             timerText.text = `TIME ${wordTime}`;
         }
@@ -362,6 +397,12 @@ export function regsiterTyping() {
 
             startPhaseTimer();
             nextWord();
+
+            // scheduleBombs();
+            if (!bombSchedulerActive) {
+                bombSchedulerActive = true;
+                scheduleBombs();
+            }
         }
 
         function onPhaseTimeout() {
@@ -431,6 +472,7 @@ export function regsiterTyping() {
         function triggerBonus() {
             const count = k.rand(1, 4); // 1–3 clickers
             activeBonuses = count;
+            cottonReactSprite.use(k.sprite("hope"));
 
             for (let i = 0; i < count; i++) {
                 k.wait(i * 0.15, () => {
@@ -460,6 +502,48 @@ export function regsiterTyping() {
                     );
                 });
             }
+        };
+
+        // ==== BOMB CHALLENGE ====
+        const MAX_BOMBS = 3;
+        function spawnBomb() {
+            if (activeBombs.length >= MAX_BOMBS) return;
+
+            const bomb = bombTyper(
+                (value) => {
+                    score += value;
+                    scoreText.text = `Your current score : ${score}`;
+                    activeBombs = activeBombs.filter(b => b !== bomb);
+                },
+                (value) => {
+                    score -= value;
+                    scoreText.text = `Your current score : ${score}`;
+                    activeBombs = activeBombs.filter(b => b !== bomb);
+
+                    // spritechange
+                    isSweat = true;
+                    if(isSweat){
+                        cottonReactSprite.use(k.sprite("sweat"));
+                        k.wait(1, () => {
+                            cottonReactSprite.use(k.sprite("serious"));
+                            isSweat = false;
+                        });
+                    }
+                }
+            );
+
+            activeBombs.push(bomb);
+        };
+        function scheduleBombs() {
+            const delay = k.rand(3, 6);
+
+            k.wait(delay, () => {
+                spawnBomb();
+                if (Math.random() < 0.35) {
+                    k.wait(0.4, spawnBomb);
+                }
+                scheduleBombs();
+            });
         }
 
         // Check Word Complete
@@ -470,6 +554,7 @@ export function regsiterTyping() {
             stopWordTimer();
 
             score += currentEntry.score;
+            cottonReactSprite.use(k.sprite("gasp"));
             scoreText.text = `Your current score : ${score}`;
 
             correctStreak++;
@@ -523,9 +608,11 @@ export function regsiterTyping() {
                 randomText.opacity = 1;
                 inputLocked = false;
                 nextWord();
+                cottonReactSprite.use(k.sprite("annoyed"));
             });
 
-            score -= 2;
+            score--;
+            score = Math.max(0, score);
             scoreText.text = `Your current score : ${score}`;
         }
 
@@ -572,6 +659,7 @@ export function regsiterTyping() {
                 fillBox(target, letter);
                 inputCursor++;
                 checkWordComplete();
+
             } else {
                 registerTypo();
             }
@@ -633,7 +721,24 @@ export function regsiterTyping() {
                     audioReady = true;
                 }
 
-                if (e.key.length !== 1) return;
+                // if (e.key.length !== 1) return;
+
+
+                // Only allow alphabets
+                // === NUMBER BOMB CHECK ===
+                if (/^[1-9]$/.test(e.key)) {
+                    const value = Number(e.key);
+
+                    const bomb = activeBombs.find(b => b.value === value);
+                    if (bomb) {
+                        bomb.resolve();
+                        return;
+                    }
+                    return;
+                }
+
+                // === NORMAL LETTER FLOW ===
+                if (!/^[a-zA-Z]$/.test(e.key)) return;
 
                 const letter = e.key.toUpperCase();
                 handleLetter(letter);
@@ -739,14 +844,13 @@ export function regsiterTyping() {
             }
         });
 
-        // k.onSceneLeave(() => {
-        //     subs.unsubscribe();
-        // })
+        k.onSceneLeave(() => {
+            subs.unsubscribe();
+        })
     });
 }
 
 /**
-
 
 */
 
