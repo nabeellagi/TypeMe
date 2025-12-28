@@ -75,8 +75,8 @@ function preFilledIndexes(length) {
 }
 
 function getPhaseDuration(length) {
-    if (length <= 5) return 90;
-    return 105;
+    if (length <= 5) return 5;
+    return 120;
 }
 
 function getWordTimer(length) {
@@ -91,6 +91,7 @@ export function regsiterTyping() {
         // k.debug.inspect = true
 
         // ====== DEBUG VARIABLE =====
+        let isSceneActive = true;
         const DEBUG_MACHINE_RESULT = {
             normal: {
                 word: 5,
@@ -204,14 +205,14 @@ export function regsiterTyping() {
 
         // ===== COTTON SPRITE =====
         const cotton = k.add([
-            k.pos(k.width() / 2, -100),
+            k.pos(k.width() / 2, -130),
             k.anchor("center"),
             k.z(spriteLayer.cotton),
             "player"
         ]);
         const cottonSprite = cotton.add([
             k.sprite("fear"),
-            k.scale(0.085),
+            k.scale(0.12),
             k.anchor("center"),
             k.rotate(40)
         ]);
@@ -223,7 +224,7 @@ export function regsiterTyping() {
         const cottonReact = k.add([
             k.anchor("center"),
             k.z(spriteLayer.uiLayer),
-            k.pos(k.width()/2 + 220, k.height() + 160),
+            k.pos(k.width() / 2 + 100, k.height() + 160),
             k.rotate(0)
         ])
         const cottonReactSprite = cottonReact.add([
@@ -235,30 +236,30 @@ export function regsiterTyping() {
         // Entrance fall
         cottonTl.to(cotton.pos, {
             y: k.height() + 55,
-            duration: 3,
-            ease: "power2.out"
+            duration: 2,
+            ease: "expo.in"
         });
         cottonTl.to(cottonSprite, {
-            angle: "+=" + 45,
-            duration: 1.8,
+            angle: "+=" + 55,
+            duration: 2.2,
             ease: "power2.out"
-        }, "<");
+        }, "-=1.2");
         cottonTl.eventCallback("onComplete", () => {
+            k.shake(20);
             overlay.z = spriteLayer.bg + 1;
             overlay.opacity = 0.85
             // startPhaseTimer();
             // nextWord();
-
             gsap.to(cottonReact.pos, {
                 y: cottonReactFinalY,
                 duration: 0.6,
                 ease: "power2.out",
                 delay: 0.1
             });
-            gsap.fromTo(cottonReact, 
-                { angle : -40 },
+            gsap.fromTo(cottonReact,
+                { angle: -40 },
                 {
-                    angle : 0,
+                    angle: 0,
                     duration: 0.8,
                     ease: "power3.out"
                 },
@@ -522,10 +523,10 @@ export function regsiterTyping() {
 
                     // spritechange
                     isSweat = true;
-                    if(isSweat){
+                    if (isSweat) {
                         cottonReactSprite.use(k.sprite("sweat"));
                         k.wait(1, () => {
-                            cottonReactSprite.use(k.sprite("serious"));
+                            cottonReactSprite.use(k.sprite("annoyed"));
                             isSweat = false;
                         });
                     }
@@ -535,16 +536,26 @@ export function regsiterTyping() {
             activeBombs.push(bomb);
         };
         function scheduleBombs() {
+            if (!isSceneActive || !bombSchedulerActive) return;
+
             const delay = k.rand(3, 6);
 
             k.wait(delay, () => {
+                if (!isSceneActive || !bombSchedulerActive) return;
+
                 spawnBomb();
+
                 if (Math.random() < 0.35) {
-                    k.wait(0.4, spawnBomb);
+                    k.wait(0.4, () => {
+                        if (!isSceneActive) return;
+                        spawnBomb();
+                    });
                 }
+
                 scheduleBombs();
             });
         }
+
 
         // Check Word Complete
         function checkWordComplete() {
@@ -608,7 +619,7 @@ export function regsiterTyping() {
                 randomText.opacity = 1;
                 inputLocked = false;
                 nextWord();
-                cottonReactSprite.use(k.sprite("annoyed"));
+                cottonReactSprite.use(k.sprite("serious"));
             });
 
             score--;
@@ -745,15 +756,28 @@ export function regsiterTyping() {
             })
         );
 
-
         // end game
         function endGame() {
             stopWordTimer();
             stopPhaseTimer();
+            isSceneActive = false;
+            bombSchedulerActive = false;
+            overlay.z = 9999;
+            // k.wait(0.5, () => {
+            //     overlay.opacity = 1;
+            // })
+            // k.wait(0.5, () => {
+            //     k.go("clicker", { typoWords: typoWords, bannedWords: bannedWords, score: score });
+            // });
 
-            alert(
-                `FINAL SCORE: ${score}\n\nTYPO WORDS:\n${typoWords.join(", ")}`
-            );
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    k.go("clicker", { typoWords, bannedWords, score });
+                }
+            });
+            tl.to(overlay, { opacity: 1, duration: 0.5, ease: "none" })
+                .to(overlay, { opacity: 0.85, duration: 0.5, ease: "none" })
+                .to(overlay, { opacity: 1, duration: 0.5, ease: "none" })
         }
 
         // TIMER
@@ -845,7 +869,20 @@ export function regsiterTyping() {
         });
 
         k.onSceneLeave(() => {
+            // Clean it up!
+
             subs.unsubscribe();
+            isSceneActive = false;
+
+            synth.dispose();
+            Tone.Transport.stop();
+            Tone.Transport.cancel();
+
+            gsap.killTweensOf("*");
+            gsap.globalTimeline.clear();
+
+            activeBombs.forEach(b => b.destroy?.());
+            activeBombs = [];
         })
     });
 }

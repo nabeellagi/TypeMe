@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import { Btn } from "../ui/btn";
 
 import { fromEvent, Subscription } from "rxjs";
-import { debounceTime } from "rxjs/operators";
+import { debounceTime, filter, map } from "rxjs/operators";
 import { particleTouch } from "../utils/particleTouch";
 import { theme } from "../core/kaplay/theme";
 
@@ -79,7 +79,10 @@ export function registerMenu() {
 
         const subs = new Subscription();
 
-        const key$ = fromEvent(window, "keydown");
+        const key$ = fromEvent(window, "keydown").pipe(
+            map(e => e.key.toUpperCase()),
+            filter(key => /^[A-Z]$/.test(key))
+        );
         const idle$ = fromEvent(window, "keydown").pipe(
             debounceTime(1500)
         );
@@ -150,38 +153,28 @@ export function registerMenu() {
         )
 
         subs.add(
-            key$.subscribe((e) => {
-                const key = e.key.toUpperCase();
+            key$.subscribe((key) => {
 
-                // wrong? reset
-                if (key != WORD[currentIndex]) {
+                if (key !== WORD[currentIndex]) {
                     currentIndex = 0;
                     letters.forEach(l => {
-                        gsap.to(l, {
-                            opacity: 0.4,
-                            duration: 0.15,
-                            ease: "power2.out"
-                        })
+                        gsap.to(l, { opacity: 0.4, duration: 0.15, ease: "power2.out" });
                     });
                     k.shake(12);
                     return;
-                };
+                }
 
-                // correct 
                 gsap.to(letters[currentIndex], {
                     opacity: 1,
                     duration: 0.15,
                     ease: "power2.out"
                 });
+
                 currentIndex++;
 
-                // finished word
-                if (currentIndex === WORD.length) {
-                    startGame();
-                    if (timeoutSub) timeoutSub.unsubscribe();
-                }
+                if (currentIndex === WORD.length) startGame();
             })
-        )
+        );
 
         // ===== UI BUTTON =====
         const tutorialBtn = Btn({

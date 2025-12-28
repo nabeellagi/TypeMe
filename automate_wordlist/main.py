@@ -83,7 +83,7 @@ def filter_words(words, profanity):
 
         buckets[length].append({
             "word": word,
-            "score": score_word(word)
+            "score": score_word(word) * 2
         })
 
     return buckets

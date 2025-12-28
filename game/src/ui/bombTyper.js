@@ -99,7 +99,7 @@ export function bombTyper(onResolve, onExplode) {
     bomb.__bombValue = value;
 
     // Timeout
-    const time = k.choose([1.25, 1,5, 2]);
+    const time = k.choose([2, 3]);
     const timeout = k.wait(time, explode);
 
     function resolve() {
