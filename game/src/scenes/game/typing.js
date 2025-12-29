@@ -80,8 +80,8 @@ function getPhaseDuration(length) {
 }
 
 function getWordTimer(length) {
-    if (length === 4) return 6;
-    if (length === 5 || length === 6) return 8;
+    if (length === 4) return 4;
+    if (length === 5 || length === 6) return 5;
     if (length > 6) return 12;
 }
 

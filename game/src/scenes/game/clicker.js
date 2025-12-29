@@ -32,22 +32,24 @@ function getWordHP(word) {
 
 function explosionEffect(pos) {
     const boom = k.add([
-        k.circle(15),
+        k.circle(25),
         k.color("#FFFFFF"),
-        k.opacity(0.6),
+        k.opacity(0.8),
         k.pos(pos),
         k.z(999)
     ]);
 
     gsap.to(boom, {
         duration: 0.35,
-        scale: 6,
+        scale: 50,
         opacity: 0,
         ease: "power2.out",
-        onComplete: () => boom.destroy()
+        onStart: () => k.shake(5),
+        onComplete: () => {
+            boom.destroy()
+        }
     });
 };
-
 
 export function registerClicker() {
     k.scene("clicker", ({ typoWords, bannedWords, score } = {}) => {
@@ -61,7 +63,7 @@ export function registerClicker() {
 
         typoWords = Array.isArray(typoWords) ? typoWords : ["FAIL", "TEAR", "ABSOLUTE", "FATAL", "JAMES", "JEANS", "EMPOWER", "ELBOW", "WEATHER"];
         bannedWords = Array.isArray(bannedWords) ? bannedWords : ["FAIL", "TEAR", "ABSOLUTE", "FATAL", "JAMES", "JEANS", "EMPOWER", "ELBOW", "WEATHER"];
-        score = typeof score === "number" ? score : 0;
+        score = typeof score === "number" ? score : 500;
 
         // debug
         console.log(typoWords[1]);
@@ -69,7 +71,7 @@ export function registerClicker() {
         console.log(score);
 
         const damage = typoWords.length;
-        let addScore = Math.ceil(damage); 
+        let addScore = Math.ceil(damage);
 
         const spriteLayer = {
             bg: 9,
@@ -85,7 +87,7 @@ export function registerClicker() {
             k.color("#100738"),
             k.anchor("topleft"),
             k.fixed(),
-            k.z(spriteLayer.bg + 1)
+            k.z(spriteLayer.uiLayer + 1)
         ]);
 
         const floor = bgGenerator({
@@ -190,8 +192,24 @@ export function registerClicker() {
         }, "<");
         introTl.eventCallback("onComplete", () => {
             startAttackLoop(typoWords);
+            overlay.z = spriteLayer.bg + 1;
+            gameState = "play";
         });
 
+        // ==== UI ====
+        const uis = [];
+        const timerText = k.add([
+            k.text(`${timer}`, {
+                font: "Ajelins"
+            }),
+            k.pos(250, k.height() - 100),
+            k.anchor("center"),
+            k.opacity(0.6),
+            k.z(spriteLayer.uiLayer)
+        ]);
+        uis.push(timerText);
+
+        const scoreBar = k.add([])
 
         // ==== SPRITE ====
 
@@ -270,6 +288,35 @@ export function registerClicker() {
                 ease: "power1.out",
                 onComplete: () => ripple.destroy()
             });
+        };
+        function startDangerBlink(obj) {
+            obj.color = k.rgb(255, 80, 80);
+
+            const tl = gsap.timeline({ repeat: -1, yoyo: true });
+
+            tl.to(obj, {
+                opacity: 0.4,
+                duration: 0.15,
+                ease: "power1.inOut"
+            });
+
+            tl.to(obj.scale, {
+                x: 1.08,
+                y: 1.08,
+                duration: 0.15,
+                ease: "power1.inOut"
+            }, "<");
+
+            obj.warningTween = tl;
+        }
+        function stopDangerBlink(obj) {
+            if (obj.warningTween) {
+                obj.warningTween.kill();
+                obj.warningTween = null;
+            }
+            obj.opacity = 1;
+            obj.scale = k.vec2(1);
+            obj.color = k.rgb(255, 255, 255);
         }
         // Attack Pattern Helpers
         function spawnWordEntity(word, startPos) {
@@ -283,16 +330,22 @@ export function registerClicker() {
                 k.rotate(0),
                 k.opacity(1),
                 k.scale(1),
+                k.color(k.rgb(255, 255, 255)),
                 {
                     hp,
                     word,
                     clicked: false,
-                    exploded: false
+                    exploded: false,
+                    landing: false,
+                    warningTween: false,
+                    explodeTimer: false
                 },
                 k.z(spriteLayer.uiLayer)
             ]);
 
             obj.onClick(() => {
+                if (obj.exploded) return;
+
                 const mousePos = k.mousePos().clone();
                 particleTouch(mousePos.x, mousePos.y);
 
@@ -300,14 +353,21 @@ export function registerClicker() {
                 spawnRipple(obj.pos);
 
                 obj.hp--;
-                score += addScore;
-                addScore++;
+                score++;
 
-                if (obj.hp <= 0 && !obj.exploded) {
+                if (obj.hp <= 0) {
                     obj.exploded = true;
+
+                    if (obj.explodeTimer) {
+                        obj.explodeTimer.kill();
+                        obj.explodeTimer = null;
+                    }
+
+                    stopDangerBlink(obj);
                     destroyPop(obj);
                 }
             });
+
             return obj;
         }
         function spawnSlidingAttack(word) {
@@ -321,7 +381,7 @@ export function registerClicker() {
 
             const tween = gsap.to(obj.pos, {
                 x: endX,
-                duration: k.rand(5, 6),
+                duration: k.rand(7, 9),
                 ease: "linear",
                 onComplete: () => {
                     if (!obj.exploded && obj.exists()) {
@@ -339,35 +399,39 @@ export function registerClicker() {
 
             const obj = spawnWordEntity(word, k.vec2(x, -140));
 
-
-            let speed = 35;
-            const gravity = 350;
-            const groundY = k.height() - 50;
+            let speed = 25;
+            const gravity = 250;
+            const groundY = k.height() - 70;
 
             gsap.fromTo(obj, { opacity: 0, angle: 0 }, { opacity: 1, angle: 90, duration: 0.4 });
 
             obj.onUpdate(() => {
                 if (obj.exploded) return;
-                speed += gravity * k.dt();
-                obj.pos.y += speed * k.dt();
 
-                // Ground hit
-                if (obj.pos.y >= groundY) {
-                    obj.pos.y = groundY;
-
-                    if (obj.hp > 0 && !obj.exploded) {
-                        obj.exploded = true;
-
-                        gsap.delayedCall(0.2, () => {
-                            if (!obj.exists()) return;
-
-                            explosionEffect(obj.pos);
-                            score -= damage;
-                            obj.destroy();
-                        });
-                    }
+                if (!obj.landing) {
+                    speed += gravity * k.dt();
+                    obj.pos.y += speed * k.dt();
                 }
-            })
+                // Ground hit
+                if (obj.pos.y >= groundY && !obj.landing) {
+                    obj.pos.y = groundY;
+                    obj.landing = true;
+                    speed = 0;
+                    startDangerBlink(obj);
+
+                    obj.explodeTimer = gsap.delayedCall(0.9, () => {
+                        if (!obj.exists()) return;
+                        if (obj.hp <= 0) return;
+
+                        obj.exploded = true;
+                        stopDangerBlink(obj);
+                        explosionEffect(obj.pos);
+                        score -= damage;
+                        obj.destroy();
+                    });
+                }
+            });
+
         }
 
         // Attack Loop
@@ -384,7 +448,7 @@ export function registerClicker() {
                     spawnFallingAttack(word);
                 }
 
-                gsap.delayedCall(k.rand(1, 2), spawn);
+                gsap.delayedCall(k.rand(0.8, 1.3), spawn);
             }
 
             spawn();
@@ -392,7 +456,13 @@ export function registerClicker() {
 
         // ===== UPDATE ===== 
         k.onUpdate(() => {
-
+            const dt = k.dt();
+            if (gameState === "play") {
+                if (timer > 0) {
+                    timer -= dt;
+                    timerText.text = Math.ceil(timer);
+                }
+            }
         });
 
         k.onSceneLeave(() => {
