@@ -397,7 +397,7 @@ export function registerClicker() {
                     stopDangerBlink(obj);
                     destroyPop(obj);
 
-                    score = Math.min(score+addScore, max_score);
+                    // score = Math.min(score+addScore, max_score);
                     // addScore++;
                     scoreBar_width = getScoreBarWidth(score);
                     scoreBar.width = scoreBar_width;

@@ -180,7 +180,10 @@ export function registerMenu() {
         const tutorialBtn = Btn({
             text: "Tutorial",
             pos: k.vec2(k.width() - 460, k.height() / 2 - 90),
-            color: theme.lightPink
+            color: theme.lightPink,
+            onClick: () => {
+                k.go("tutorial")
+            }
         });
 
         const creditBtn = Btn({
