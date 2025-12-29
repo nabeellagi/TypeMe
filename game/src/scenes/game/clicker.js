@@ -26,7 +26,7 @@ function flickerLetter(letter, duration = 0.6) {
 }
 
 function getWordHP(word) {
-    if (word.length <= 5) return 2;
+    if (word.length <= 6) return 2;
     return 3;
 };
 
@@ -59,7 +59,7 @@ export function registerClicker() {
         // ==== VARIABLE SET UP ====
         let gameState = "opening";
         let control = false;
-        let timer = 45;
+        let timer = 55;
 
         typoWords = Array.isArray(typoWords) ? typoWords : ["FAIL", "TEAR", "ABSOLUTE", "FATAL", "JAMES", "JEANS", "EMPOWER", "ELBOW", "WEATHER"];
         bannedWords = Array.isArray(bannedWords) ? bannedWords : ["FAIL", "TEAR", "ABSOLUTE", "FATAL", "JAMES", "JEANS", "EMPOWER", "ELBOW", "WEATHER"];
@@ -71,7 +71,7 @@ export function registerClicker() {
         console.log(score);
 
         const damage = typoWords.length;
-        let addScore = Math.ceil(damage);
+        let addScore = Math.ceil(damage / 2);
 
         const spriteLayer = {
             bg: 9,
@@ -200,17 +200,49 @@ export function registerClicker() {
         const uis = [];
         const timerText = k.add([
             k.text(`${timer}`, {
-                font: "Ajelins"
+                font: "Ajelins",
             }),
-            k.pos(250, k.height() - 100),
+            k.pos(k.width() / 2 - 200, k.height() - 150),
             k.anchor("center"),
-            k.opacity(0.6),
+            k.opacity(0.8),
+            k.color("#ffd966"),
             k.z(spriteLayer.uiLayer)
         ]);
         uis.push(timerText);
 
-        const scoreBar = k.add([])
-
+        const max_score = score;
+        const scoreBarSize = {
+            width: 200,
+            height: 30
+        }
+        const getScoreBarWidth = (currentScore) => {
+            return Math.min(Math.max(0, (currentScore / max_score) * scoreBarSize.width), scoreBarSize.width);
+        }
+        let scoreBar_width = getScoreBarWidth(score);
+        const scoreBar_bg = k.add([
+            k.rect(scoreBarSize.width, scoreBarSize.height),
+            k.pos(k.width() / 2 - 120, k.height() - 152),
+            k.color("#ff3b3b"),
+            k.anchor("left"),
+            k.z(spriteLayer.uiLayer)
+        ]);
+        const scoreBar = k.add([
+            k.rect(scoreBar_width, scoreBarSize.height),
+            k.pos(k.width() / 2 - 120, k.height() - 152),
+            k.color("#ffd966"),
+            k.anchor("left"),
+            k.z(scoreBar_bg.z)
+        ]);
+        const scoreText = k.add([
+            k.text(`${score}/${max_score}`, {
+                font: "Ajelins",
+            }),
+            k.pos(k.width() / 2 - 20, k.height() - 110),
+            k.anchor("center"),
+            k.opacity(0.8),
+            k.color("#ffd966"),
+            k.z(spriteLayer.uiLayer)
+        ]);
         // ==== SPRITE ====
 
         // ==== CLICKER ENEMY ====
@@ -353,7 +385,6 @@ export function registerClicker() {
                 spawnRipple(obj.pos);
 
                 obj.hp--;
-                score++;
 
                 if (obj.hp <= 0) {
                     obj.exploded = true;
@@ -365,6 +396,12 @@ export function registerClicker() {
 
                     stopDangerBlink(obj);
                     destroyPop(obj);
+
+                    score = Math.min(score+addScore, max_score);
+                    // addScore++;
+                    scoreBar_width = getScoreBarWidth(score);
+                    scoreBar.width = scoreBar_width;
+                    scoreText.text = `${score}/${max_score}`;
                 }
             });
 
@@ -387,7 +424,12 @@ export function registerClicker() {
                     if (!obj.exploded && obj.exists()) {
                         obj.exploded = true;
                         explosionEffect(obj.pos);
+
                         score -= damage;
+                        scoreBar_width = getScoreBarWidth(score);
+                        scoreBar.width = scoreBar_width;
+                        scoreText.text = `${score}/${max_score}`;
+
                         obj.destroy();
                     }
                 }
@@ -426,7 +468,12 @@ export function registerClicker() {
                         obj.exploded = true;
                         stopDangerBlink(obj);
                         explosionEffect(obj.pos);
+
                         score -= damage;
+                        scoreBar_width = getScoreBarWidth(score);
+                        scoreBar.width = scoreBar_width;
+                        scoreText.text = `${score}/${max_score}`;
+
                         obj.destroy();
                     });
                 }
