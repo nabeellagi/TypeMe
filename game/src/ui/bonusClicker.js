@@ -84,7 +84,7 @@ export function bonusClicker(onResolve) {
             duration: 0.25,
             onComplete: () =>{
                 label.destroy()
-                onExpire?.();
+                // onExpire?.();
             }
         });
     }

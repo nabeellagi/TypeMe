@@ -75,13 +75,13 @@ function preFilledIndexes(length) {
 }
 
 function getPhaseDuration(length) {
-    if (length <= 5) return 5;
+    if (length <= 5) return 85;
     return 120;
 }
 
 function getWordTimer(length) {
-    if (length === 4) return 8;
-    if (length === 5 || length === 6) return 10;
+    if (length === 4) return 6;
+    if (length === 5 || length === 6) return 8;
     if (length > 6) return 12;
 }
 
@@ -141,7 +141,8 @@ export function regsiterTyping() {
         let bannedWords = [];
 
         // Countdown
-        let countdown = 3;
+        const PHASE_TIME_WARNING = 10;
+        let phaseWarningActive = false;
 
         // ===== SPRITE LAYERS =====
         const spriteLayer = {
@@ -468,7 +469,43 @@ export function regsiterTyping() {
             } else {
                 endGame();
             }
+        };
+        function activatePhaseWarning() {
+            if (phaseWarningActive) return;
+            phaseWarningActive = true;
+
+            phaseTimerText.color = k.rgb(255, 102, 102); // warm yellow
+
+            gsap.to(phaseTimerText, {
+                scale: 1.7,
+                duration: 0.25,
+                ease: "power2.out"
+            });
+
+            gsap.to(phaseTimerText, {
+                opacity: 0.7,
+                duration: 0.4,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut"
+            });
         }
+        function resetPhaseWarning() {
+            if (!phaseWarningActive) return;
+            phaseWarningActive = false;
+
+            gsap.killTweensOf(phaseTimerText);
+
+            phaseTimerText.color = k.rgb(255, 255, 255);
+            phaseTimerText.opacity = 1;
+
+            gsap.to(phaseTimerText, {
+                scale: 1,
+                duration: 0.2,
+                ease: "power2.out"
+            });
+        }
+
         // ==== BONUS CLICKER ====
         function triggerBonus() {
             const count = k.rand(1, 4); // 1–3 clickers
@@ -762,22 +799,30 @@ export function regsiterTyping() {
             stopPhaseTimer();
             isSceneActive = false;
             bombSchedulerActive = false;
-            overlay.z = 9999;
+            inputLocked = true;
+            overlay.z = 999;
             // k.wait(0.5, () => {
             //     overlay.opacity = 1;
             // })
             // k.wait(0.5, () => {
             //     k.go("clicker", { typoWords: typoWords, bannedWords: bannedWords, score: score });
             // });
-
+            cottonReact.z = 999;
             const tl = gsap.timeline({
                 onComplete: () => {
                     k.go("clicker", { typoWords, bannedWords, score });
                 }
             });
-            tl.to(overlay, { opacity: 1, duration: 0.5, ease: "none" })
-                .to(overlay, { opacity: 0.85, duration: 0.5, ease: "none" })
-                .to(overlay, { opacity: 1, duration: 0.5, ease: "none" })
+            tl.to(overlay, {
+                opacity: 1,
+                duration: 0.5,
+                ease: "power2.out"
+            });
+            tl.to(cottonReact.pos, {
+                y: k.height() + 100,
+                duration: 0.7,
+                ease: "power4.in"
+            });
         }
 
         // TIMER
@@ -794,6 +839,7 @@ export function regsiterTyping() {
             k.text("1:20", { font: "Ajelins", size: 32 }),
             k.pos(k.width() / 2 + 320, 90),
             k.anchor("center"),
+            k.color(k.rgb(255,255,255)),
             k.z(spriteLayer.uiLayer)
         ]);
 
@@ -852,8 +898,15 @@ export function regsiterTyping() {
                 phaseTime -= k.dt();
                 phaseTimerText.text = formatTime(phaseTime);
 
+                if (phaseTime <= PHASE_TIME_WARNING) {
+                    activatePhaseWarning();
+                } else {
+                    resetPhaseWarning();
+                }
+
                 if (phaseTime <= 0) {
                     phaseTimerActive = false;
+                    resetPhaseWarning();
                     onPhaseTimeout();
                 }
             }
