@@ -81,8 +81,8 @@ function getPhaseDuration(length) {
 }
 
 function getWordTimer(length) {
-    if (length === 4) return 4;
-    if (length === 5 || length === 6) return 5;
+    if (length === 4) return 5;
+    if (length === 5 || length === 6) return 6;
     if (length > 6) return 12;
 }
 
@@ -94,14 +94,14 @@ export function regsiterTyping() {
         // k.debug.inspect = true
 
         // BGM
-        if(!bgm){
-            bgm = k.play("", {
-                volume: 0.7,
-                loop: true
-            });
-        };
+        // if(!bgm){
+        //     bgm = k.play("Glitch", {
+        //         volume: 0.7,
+        //         loop: true
+        //     });
+        // };
         const stopBgm = () => {
-            if(bgm){
+            if (bgm) {
                 gsap.to(bgm, {
                     duration: 1.5,
                     volume: 0,
@@ -137,10 +137,27 @@ export function regsiterTyping() {
         let inputCursor = 0;
 
         // ==== TONE SET UP ====
-        const synth = new Tone.Synth({
-            volume: -12,
-            oscillator: { type: "sine" }
-        }).toDestination();
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            maxPolyphony: 6,
+            oscillator: {
+                type: "amsawtooth1"
+            },
+            envelope: {
+                attack: 0.02,
+                decay: 0.15,
+                sustain: 0.25,
+                release: 0.35
+            },
+            volume: 2
+        })
+            .connect(new Tone.Compressor({
+                threshold: -18,
+                ratio: 2.5,
+                attack: 0.01,
+                release: 0.2
+            }))
+            .connect(new Tone.Limiter(-3))  // protects against clipping
+            .toDestination();
 
         // ===== GAME STATE =====
         // const GAME_STATE = {
@@ -267,6 +284,12 @@ export function regsiterTyping() {
             ease: "power2.out"
         }, "-=1.2");
         cottonTl.eventCallback("onComplete", () => {
+            if (!bgm) {
+                bgm = k.play("Glitch", {
+                    volume: 0.6,
+                    loop: true
+                });
+            };
             k.shake(20);
             overlay.z = spriteLayer.bg + 1;
             overlay.opacity = 0.85
@@ -537,6 +560,7 @@ export function regsiterTyping() {
                 k.wait(i * 0.15, () => {
                     bonusClicker(
                         (bonus) => {
+                            synth.triggerAttackRelease(["E4", "G4", "C5"], "8n", Tone.now());
                             if (bonus.value === "MULTIPLY") {
                                 score *= 2;
                             } else {
@@ -664,6 +688,9 @@ export function regsiterTyping() {
         function registerTypo() {
             typoWords.push(currentWord);
             k.shake(3);
+
+            const chord = ["C4", "D4", "E4", "G4", "A4"];
+            synth.triggerAttackRelease(chord, "8n", Tone.now());
 
             correctStreak = 0;
             // bonusCooldown = false;
@@ -861,7 +888,7 @@ export function regsiterTyping() {
             k.text("1:20", { font: "Ajelins", size: 32 }),
             k.pos(k.width() / 2 + 320, 90),
             k.anchor("center"),
-            k.color(k.rgb(255,255,255)),
+            k.color(k.rgb(255, 255, 255)),
             k.z(spriteLayer.uiLayer)
         ]);
 

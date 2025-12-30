@@ -45,9 +45,13 @@ export function preloadAll() {
 
 
     // SFX
+    k.loadSound("explode", "sfx/explode.mp3")
 
     // MUSIC
     
     k.loadMusic("3am", "song/3am.ogg");
     k.loadMusic("Midnight", "song/Midnight.ogg");
+    k.loadMusic("Glitch", "song/glitch.ogg");
+    k.loadMusic("Space", "song/16_bit_space.ogg");
+
 }

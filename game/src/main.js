@@ -17,5 +17,6 @@ registerClicker();
 
 k.go("menu");
 // k.go("choose")
-// k.go("typing");
-// k.go("clicker");
+k.go("typing");
+// k.go("clicker", { typoWords : [], bannedWords : ["A", "B", "C"], score:1000});
+// k.go("clicker")

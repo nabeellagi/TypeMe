@@ -61,14 +61,14 @@ export function registerClicker() {
         // k.debug.inspect = true;
 
         // BGM
-        if(!bgm){
-            bgm = k.play("Blackjack", {
-                volume: 0.7,
-                loop: true
-            });
-        };
+        // if(!bgm){
+        //     bgm = k.play("Space", {
+        //         volume: 0.7,
+        //         loop: true
+        //     });
+        // };
         const stopBgm = () => {
-            if(bgm){
+            if (bgm) {
                 gsap.to(bgm, {
                     duration: 1.5,
                     volume: 0,
@@ -80,7 +80,6 @@ export function registerClicker() {
         }
         // ==== VARIABLE SET UP ====
         let gameState = "opening";
-        let control = false;
         let timer = 55;
 
         typoWords = Array.isArray(typoWords) ? typoWords : ["FAIL", "TEAR", "ABSOLUTE", "FATAL", "JAMES", "JEANS", "EMPOWER", "ELBOW", "WEATHER"];
@@ -99,7 +98,7 @@ export function registerClicker() {
                 sustain: 0.25,
                 release: 0.35
             },
-            volume: -8
+            volume: 2
         })
             .connect(new Tone.Compressor({
                 threshold: -18,
@@ -111,12 +110,15 @@ export function registerClicker() {
             .toDestination();
 
         // debug
-        console.log(typoWords[1]);
-        console.log(bannedWords[0]);
+        console.log(bannedWords);
         console.log(score);
 
         const damage = typoWords.length * 2;
         // let addScore = Math.ceil(damage / 2);
+
+        const typoCount = typoWords.length || 0;
+        const bannedCount = bannedWords.length;
+        const noTypoMode = typoCount === 0;
 
         const spriteLayer = {
             bg: 9,
@@ -236,9 +238,43 @@ export function registerClicker() {
             ease: "power2.out"
         }, "<");
         introTl.eventCallback("onComplete", () => {
-            startAttackLoop(typoWords);
+
             overlay.z = spriteLayer.bg + 1;
+
+            if (noTypoMode) {
+
+                gameState = "ended";
+
+                const congrats = showNoTypoCongrats();
+
+                if (!bgm) {
+                    bgm = k.play("Space", {
+                        volume: 0.4,
+                        loop: false
+                    });
+                }
+
+                gsap.delayedCall(1.8, () => {
+                    congrats.destroy();
+
+                    showScoreScreen({
+                        score,
+                        typoCount,
+                        bannedCount
+                    });
+                });
+
+                return;
+            }
             gameState = "play";
+            startAttackLoop(typoWords);
+
+            if (!bgm) {
+                bgm = k.play("Space", {
+                    volume: 0.6,
+                    loop: true
+                });
+            }
         });
 
         // ==== UI ====
@@ -400,7 +436,7 @@ export function registerClicker() {
             const hp = getWordHP(word);
 
             const obj = k.add([
-                k.text(word, { font: "Ajelins", size: 48, letterSpacing: 1.4 }),
+                k.text(word, { font: "Ajelins", size: 56, letterSpacing: 1.4 }),
                 k.pos(startPos),
                 k.anchor("center"),
                 k.area(),
@@ -482,8 +518,8 @@ export function registerClicker() {
                     if (!obj.exploded && obj.exists()) {
                         obj.exploded = true;
                         explosionEffect(obj.pos);
-                        
-                        const chord = ["C4","D4","E4","G4","A4"];
+
+                        const chord = ["C4", "D4", "E4", "G4", "A4"];
                         synth.triggerAttackRelease(chord, "8n", Tone.now());
 
                         score -= damage;
@@ -531,7 +567,7 @@ export function registerClicker() {
                         stopDangerBlink(obj);
                         explosionEffect(obj.pos);
 
-                        const chord = ["C4","D4","E4","G4","A4"];
+                        const chord = ["C4", "D4", "E4", "G4", "A4"];
                         synth.triggerAttackRelease(chord, "8n", Tone.now());
 
                         score -= damage;
@@ -561,10 +597,183 @@ export function registerClicker() {
                     spawnFallingAttack(word);
                 }
 
-                gsap.delayedCall(k.rand(0.8, 1.3), spawn);
+                gsap.delayedCall(k.rand(0.65, 1.3), spawn);
             }
 
             spawn();
+        }
+
+        // ===== END SCREEN ====
+        function showScoreScreen({ score, typoCount, bannedCount }) {
+
+            const accuracy = bannedCount === 0
+                ? 1
+                : Math.max(0, 1 - (typoCount / bannedCount));
+
+            const percent = Math.round(accuracy * 100);
+
+            // Dim background
+            const panelBg = k.add([
+                k.rect(k.width(), k.height()),
+                k.color(0, 0, 0),
+                k.opacity(0),
+                k.fixed(),
+                k.z(999)
+            ]);
+
+            gsap.to(panelBg, {
+                opacity: 0.65,
+                duration: 0.6,
+                ease: "power2.out"
+            });
+
+            // Center panel
+            const panel = k.add([
+                k.rect(800, 600, { radius: 16 }),
+                k.color("#4a5be6"),
+                k.opacity(0),
+                k.anchor("center"),
+                k.pos(k.width() / 2, k.height() / 2),
+                k.scale(0.8),
+                k.fixed(),
+                k.z(panelBg.z + 1)
+            ]);
+
+            gsap.to(panel, {
+                opacity: 1,
+                duration: 0.7,
+                ease: "back.out(1.6)"
+            });
+
+            gsap.to(panel.scale, {
+                x: 1,
+                y: 1,
+                duration: 0.7,
+                ease: "back.out(1.6)"
+            });
+
+            // Title
+            const title = k.add([
+                k.text("RESULTS", { font: "Kaph", size: 56 }),
+                k.pos(panel.pos.x, panel.pos.y - 120),
+                k.anchor("center"),
+                k.opacity(0),
+                k.fixed(),
+                k.z(panel.z + 1)
+            ]);
+
+            gsap.to(title, {
+                opacity: 1,
+                duration: 0.5
+            });
+
+            // Score text
+            const scoreText = k.add([
+                k.text(`Score: ${score}`, { font: "Ajelins", size: 36 }),
+                k.pos(panel.pos.x, panel.pos.y - 20),
+                k.anchor("center"),
+                k.opacity(0),
+                k.fixed(),
+                k.z(panel.z + 1)
+            ]);
+
+            // Accuracy text
+            const accuracyText = k.add([
+                k.text(`Accuracy: ${percent}%`, { font: "Ajelins", size: 30 }),
+                k.pos(panel.pos.x, panel.pos.y + 40),
+                k.anchor("center"),
+                k.opacity(0),
+                k.fixed(),
+                k.z(panel.z + 1)
+            ]);
+
+            gsap.to([scoreText, accuracyText], {
+                opacity: 1,
+                duration: 0.6,
+                stagger: 0.2
+            });
+
+            if (typoCount === 0) {
+                const cheer = k.add([
+                    k.text("PERFECT!", { font: "Kaph", size: 48 }),
+                    k.pos(panel.pos.x, panel.pos.y + 110),
+                    k.anchor("center"),
+                    k.opacity(0),
+                    k.fixed(),
+                    k.z(panel.z + 2)
+                ]);
+
+                gsap.to(cheer, {
+                    opacity: 1,
+                    yoyo: true,
+                    repeat: -1,
+                    duration: 1.2,
+                    ease: "sine.inOut"
+                });               
+                gsap.to(cheer.scale, {
+                    x: 1,
+                    y: 1,
+                    duration: 0.7,
+                    ease: "back.out(1.6)"
+                });
+
+            }
+        };
+        function showNoTypoCongrats() {
+            const text = k.add([
+                k.text("CONGRATS!\nNO TYPO!", {
+                    font: "Kaph",
+                    size: 64,
+                    align: "center"
+                }),
+                k.pos(k.width() / 2, k.height() / 2),
+                k.anchor("center"),
+                k.opacity(0),
+                k.scale(0.8),
+                k.fixed(),
+                k.z(999)
+            ]);
+
+            gsap.to(text, {
+                opacity: 1,
+                duration: 0.7,
+                ease: "back.out(1.6)"
+            });
+
+            gsap.to(text.scale, {
+                x: 1,
+                y: 1,
+                duration: 0.7,
+                ease: "back.out(1.6)"
+            });
+
+            gsap.to(text, {
+                y: text.pos.y - 20,
+                yoyo: true,
+                repeat: -1,
+                duration: 1.2,
+                ease: "sine.inOut"
+            });
+
+            return text;
+        }
+        function endPhase() {
+            stopBgm?.();
+
+            gsap.to(overlay, {
+                opacity: 0.85,
+                duration: 0.6,
+                ease: "power2.inOut"
+            });
+
+            // const typoCount = typoWords.length;
+            // const bannedCount = bannedWords.length;
+
+            showScoreScreen({
+                score,
+                typoCount,
+                bannedCount
+            });
         }
 
         // ===== UPDATE ===== 
@@ -574,6 +783,11 @@ export function registerClicker() {
                 if (timer > 0) {
                     timer -= dt;
                     timerText.text = Math.ceil(timer);
+                };
+                if (timer <= 0 && gameState === "play") {
+                    gameState = "ended";
+
+                    endPhase();
                 }
             }
         });
