@@ -7,9 +7,29 @@ import { debounceTime, filter, map } from "rxjs/operators";
 import { particleTouch } from "../utils/particleTouch";
 import { theme } from "../core/kaplay/theme";
 
+let menubgm = null;
+
 export function registerMenu() {
     k.scene("menu", () => {
 
+        // ==== BGM ====
+        if (!menubgm) {
+            menubgm = k.play("Midnight", {
+                volume: 0.6,
+                loop: true
+            });
+        }
+        const stopBgm = () => {
+            if (menubgm) {
+                gsap.to(menubgm, {
+                    duration: 1.5,
+                    volume: 0,
+                    onComplete: () => menubgm.stop(),
+                    ease: "power2.out",
+                });
+                menubgm = null;
+            }
+        };
         // ==== BACKGROUND =====
         const bg = k.add([
             k.sprite("bg1"),
@@ -130,7 +150,10 @@ export function registerMenu() {
                     duration: 0.25,
                     ease: "elastic.out(1, 0.4)",
                     onComplete: () => {
-                        k.wait(1.2, () => k.go("choose"))
+                        k.wait(1.2, () => {
+                            k.go("choose");
+                            stopBgm();
+                        })
                     }
                 },
                 "-=0.15",
@@ -154,7 +177,6 @@ export function registerMenu() {
 
         subs.add(
             key$.subscribe((key) => {
-
                 if (key !== WORD[currentIndex]) {
                     currentIndex = 0;
                     letters.forEach(l => {

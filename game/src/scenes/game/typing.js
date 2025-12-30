@@ -86,11 +86,31 @@ function getWordTimer(length) {
     if (length > 6) return 12;
 }
 
+let bgm = null
+
 export function regsiterTyping() {
     k.scene("typing", ({ machineResult } = {}) => {
         // DEBUG MODE
         // k.debug.inspect = true
 
+        // BGM
+        if(!bgm){
+            bgm = k.play("", {
+                volume: 0.7,
+                loop: true
+            });
+        };
+        const stopBgm = () => {
+            if(bgm){
+                gsap.to(bgm, {
+                    duration: 1.5,
+                    volume: 0,
+                    onComplete: () => bgm.stop(),
+                    ease: "power2.out",
+                });
+                bgm = null;
+            }
+        }
         // ====== DEBUG VARIABLE =====
         let isSceneActive = true;
         const DEBUG_MACHINE_RESULT = {
@@ -938,6 +958,8 @@ export function regsiterTyping() {
 
             activeBombs.forEach(b => b.destroy?.());
             activeBombs = [];
+
+            stopBgm();
         })
     });
 }

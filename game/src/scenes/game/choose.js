@@ -6,8 +6,28 @@ import { Btn } from "../../ui/btn";
 import { bgGenerator } from "../../utils/bgGenerator";
 // import { machineIdle } from "../../utils/machineBounce";
 
+let bgm = null;
+
 export function registerChoose() {
     k.scene("choose", () => {
+        // ==== BGM ====
+        if (!bgm) {
+            bgm = k.play("3am", {
+                volume: 0.6,
+                loop: true
+            })
+        };
+        const stopBgm = () => {
+            if (bgm) {
+                gsap.to(bgm, {
+                    duration: 1.5,
+                    volume: 0,
+                    onComplete: () => bgm.stop(),
+                    ease: "power2.out",
+                });
+                bgm = null;
+            }
+        };
         // DEBUG MODE
         // k.debug.inspect = true
         let gameState = "play";
@@ -191,10 +211,13 @@ export function registerChoose() {
             // 5. blip screen
             await screenBlip();
 
-            // 6. small breathing room
+            // 5. stop bgm
+            stopBgm();
+
+            // 7. small breathing room
             await k.wait(0.15);
 
-            // 7. move to next scene with data
+            // 8. move to next scene with data
             k.go("typing", { machineResult });
         }
 

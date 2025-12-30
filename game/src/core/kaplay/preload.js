@@ -47,5 +47,7 @@ export function preloadAll() {
     // SFX
 
     // MUSIC
-
+    
+    k.loadMusic("3am", "song/3am.ogg");
+    k.loadMusic("Midnight", "song/Midnight.ogg");
 }

@@ -53,11 +53,31 @@ function explosionEffect(pos) {
     });
 };
 
+let bgm = null;
+
 export function registerClicker() {
     k.scene("clicker", ({ typoWords, bannedWords, score } = {}) => {
         // DEBUG MODE
         // k.debug.inspect = true;
 
+        // BGM
+        if(!bgm){
+            bgm = k.play("Blackjack", {
+                volume: 0.7,
+                loop: true
+            });
+        };
+        const stopBgm = () => {
+            if(bgm){
+                gsap.to(bgm, {
+                    duration: 1.5,
+                    volume: 0,
+                    onComplete: () => bgm.stop(),
+                    ease: "power2.out",
+                });
+                bgm = null;
+            }
+        }
         // ==== VARIABLE SET UP ====
         let gameState = "opening";
         let control = false;
@@ -79,7 +99,7 @@ export function registerClicker() {
                 sustain: 0.25,
                 release: 0.35
             },
-            volume: -22
+            volume: -8
         })
             .connect(new Tone.Compressor({
                 threshold: -18,
@@ -89,7 +109,6 @@ export function registerClicker() {
             }))
             .connect(new Tone.Limiter(-3))  // protects against clipping
             .toDestination();
-
 
         // debug
         console.log(typoWords[1]);
@@ -400,23 +419,25 @@ export function registerClicker() {
                 },
                 k.z(spriteLayer.uiLayer)
             ]);
+            const chords = [
+                ["C5", "E5", "G5"],   // C major
+                ["F5", "A5", "C6"],   // F major
+                ["G4", "B4", "D5"],   // G major
+                ["A4", "C5", "E5"],   // A minor
+                ["D5", "F#5", "A5"],  // D major
+            ];
 
+            const chord = k.choose(chords);
             obj.onClick(() => {
                 if (obj.exploded) return;
 
                 const mousePos = k.mousePos().clone();
                 particleTouch(mousePos.x, mousePos.y);
 
-                const chords = [
-                    ["C5", "E5", "G5"],
-                    ["D5", "G5", "B5"],
-                    ["E5", "G5", "C6"],
-                    ["G4", "C5", "E5"],
-                    ["A4", "C5", "E5"]
-                ];
-
-                const chord = k.choose(chords);
-                synth.triggerAttackRelease(chord, "8n", Tone.now());
+                const now = Tone.now();
+                synth.triggerAttackRelease(chord[0], "16n", now);
+                synth.triggerAttackRelease(chord[0], "16n", now + 0.03);
+                synth.triggerAttackRelease(chord[0], "16n", now + 0.06);
 
                 clickFeedback(obj);
                 spawnRipple(obj.pos);
@@ -461,6 +482,9 @@ export function registerClicker() {
                     if (!obj.exploded && obj.exists()) {
                         obj.exploded = true;
                         explosionEffect(obj.pos);
+                        
+                        const chord = ["C4","D4","E4","G4","A4"];
+                        synth.triggerAttackRelease(chord, "8n", Tone.now());
 
                         score -= damage;
                         score = Math.max(0, score);
@@ -507,6 +531,9 @@ export function registerClicker() {
                         stopDangerBlink(obj);
                         explosionEffect(obj.pos);
 
+                        const chord = ["C4","D4","E4","G4","A4"];
+                        synth.triggerAttackRelease(chord, "8n", Tone.now());
+
                         score -= damage;
                         score = Math.max(0, score);
                         scoreBar_width = getScoreBarWidth(score);
@@ -524,7 +551,7 @@ export function registerClicker() {
         function startAttackLoop(wordsArray) {
 
             function spawn() {
-                if (timer <= 0) return;
+                if (timer <= 10) return;
 
                 const word = k.choose(wordsArray);
 
@@ -552,7 +579,14 @@ export function registerClicker() {
         });
 
         k.onSceneLeave(() => {
+            synth.dispose();
+            Tone.Transport.stop();
+            Tone.Transport.cancel();
 
+            gsap.killTweensOf("*");
+            gsap.globalTimeline.clear();
+
+            stopBgm();
         });
     });
 }
