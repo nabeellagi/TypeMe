@@ -130,7 +130,8 @@ export function bombTyper(onResolve, onExplode) {
         onExplode(value);
         k.shake(value);
         k.play("explode", {
-            seek: 0.2
+            seek: 0.2,
+            volume: 1.5
         });
     }
 

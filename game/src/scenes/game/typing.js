@@ -560,7 +560,7 @@ export function regsiterTyping() {
                 k.wait(i * 0.15, () => {
                     bonusClicker(
                         (bonus) => {
-                            synth.triggerAttackRelease(["E4", "G4", "C5"], "8n", Tone.now());
+                            synth.triggerAttackRelease(["C6", "E6", "G6"], "16n", Tone.now());
                             if (bonus.value === "MULTIPLY") {
                                 score *= 2;
                             } else {
@@ -597,6 +597,8 @@ export function regsiterTyping() {
                     score += value;
                     scoreText.text = `Your current score : ${score}`;
                     activeBombs = activeBombs.filter(b => b !== bomb);
+
+                    synth.triggerAttackRelease(["C6", "E6", "G6"], "16n", Tone.now());
                 },
                 (value) => {
                     score -= value;
@@ -689,7 +691,7 @@ export function regsiterTyping() {
             typoWords.push(currentWord);
             k.shake(3);
 
-            const chord = ["C4", "D4", "E4", "G4", "A4"];
+            const chord = ["C3", "D3", "E3", "G3", "A3"];
             synth.triggerAttackRelease(chord, "8n", Tone.now());
 
             correctStreak = 0;

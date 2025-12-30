@@ -4,6 +4,7 @@ import { bgGenerator } from "../../utils/bgGenerator";
 import { particleTouch } from "../../utils/particleTouch";
 import * as Tone from "tone";
 import { theme } from "../../core/kaplay/theme";
+import { Btn } from "../../ui/btn";
 
 /**
 HELPERS
@@ -36,20 +37,21 @@ function explosionEffect(pos) {
     const boom = k.add([
         k.circle(25),
         k.color("#FFFFFF"),
-        k.opacity(0.8),
+        k.opacity(0.4),
+        k.scale(1),
         k.pos(pos),
         k.z(999)
     ]);
 
-    gsap.to(boom, {
+    gsap.to(boom.scale, {
         duration: 0.35,
-        scale: 50,
-        opacity: 0,
+        x: 50,
+        y: 50,
         ease: "power2.out",
-        onStart: () => k.shake(5),
-        onComplete: () => {
-            boom.destroy()
-        }
+    });
+    gsap.to(boom, {
+        opacity: 0,
+        duration: 0.35
     });
 };
 
@@ -587,7 +589,7 @@ export function registerClicker() {
         function startAttackLoop(wordsArray) {
 
             function spawn() {
-                if (timer <= 10) return;
+                if (timer <= 8) return;
 
                 const word = k.choose(wordsArray);
 
@@ -605,6 +607,17 @@ export function registerClicker() {
 
         // ===== END SCREEN ====
         function showScoreScreen({ score, typoCount, bannedCount }) {
+
+            function tweenNumber({ from, to, duration, onUpdate, onComplete }) {
+                const obj = { value: from };
+                gsap.to(obj, {
+                    value: to,
+                    duration,
+                    ease: "power2.out",
+                    onUpdate: () => onUpdate(Math.floor(obj.value)),
+                    onComplete
+                });
+            }
 
             const accuracy = bannedCount === 0
                 ? 1
@@ -669,30 +682,129 @@ export function registerClicker() {
 
             // Score text
             const scoreText = k.add([
-                k.text(`Score: ${score}`, { font: "Ajelins", size: 36 }),
-                k.pos(panel.pos.x, panel.pos.y - 20),
+                k.text("Score: 0", { font: "Ajelins", size: 38 }),
+                k.pos(panel.pos.x, panel.pos.y - 30),
                 k.anchor("center"),
                 k.opacity(0),
+                k.scale(0.7),
                 k.fixed(),
                 k.z(panel.z + 1)
             ]);
+
+            gsap.to(scoreText.scale, {
+                x: 1,
+                y: 1,
+                duration: 0.5,
+                ease: "back.out(1.8)"
+            });
+            gsap.to(scoreText, {
+                opacity: 1,
+                duration: 0.5
+            });
+
+            tweenNumber({
+                from: 0,
+                to: score,
+                duration: 1.1,
+                onUpdate: v => scoreText.text = `Score: ${v}`,
+            });
+
+            // Bar
+            const accBarBg = k.add([
+                k.rect(360, 14, { radius: 7 }),
+                k.pos(panel.pos.x - 180, panel.pos.y + 40),
+                k.color(60, 60, 80),
+                k.fixed(),
+                k.z(panel.z + 1)
+            ]);
+
+            const accBar = k.add([
+                k.rect(0, 14, { radius: 7 }),
+                k.pos(panel.pos.x - 180, panel.pos.y + 40),
+                k.color(theme.yellow),
+                k.fixed(),
+                k.z(accBarBg.z + 1)
+            ]);
+
+            gsap.to(accBar, {
+                width: 360 * accuracy,
+                duration: 1,
+                ease: "power3.out"
+            });
 
             // Accuracy text
             const accuracyText = k.add([
-                k.text(`Accuracy: ${percent}%`, { font: "Ajelins", size: 30 }),
-                k.pos(panel.pos.x, panel.pos.y + 40),
+                k.text("Accuracy: 0%", { font: "Ajelins", size: 30 }),
+                k.pos(panel.pos.x, panel.pos.y + 70),
                 k.anchor("center"),
                 k.opacity(0),
                 k.fixed(),
                 k.z(panel.z + 1)
             ]);
 
-            gsap.to([scoreText, accuracyText], {
-                opacity: 1,
-                duration: 0.6,
-                stagger: 0.2
+            gsap.to(accuracyText, { opacity: 1, delay: 0.9 });
+
+            tweenNumber({
+                from: 0,
+                to: percent,
+                duration: 0.9,
+                onUpdate: v => accuracyText.text = `Accuracy: ${v}%`
             });
 
+            // RANK
+            function getRank(ratio) {
+                if (ratio >= 0.95) return "S";
+                if (ratio >= 0.85) return "A";
+                if (ratio >= 0.70) return "B";
+                if (ratio >= 0.55) return "C";
+                return "D";
+            }
+
+            const rankRatio = bannedCount === 0
+                ? 1
+                : Math.max(0, (bannedCount - typoCount) / bannedCount);
+
+            const rank = getRank(rankRatio);
+            const rankText = k.add([
+                k.text(rank, { font: "Kaph", size: 60 }),
+                k.pos(panel.pos.x, panel.pos.y + 170),
+                k.anchor("center"),
+                k.opacity(0),
+                k.scale(0),
+                k.fixed(),
+                k.rotate(1),
+                k.z(panel.z + 2)
+            ]);
+            const rankTl = gsap.timeline({ delay: 1.6 });
+
+            rankTl
+                .to(rankText.scale, {
+                    x: 1.4,
+                    y: 1.4,
+                    duration: 0.25,
+                    ease: "power4.out",
+                    onStart: () => k.shake(14)
+                })
+                .to(rankText, {
+                    opacity: 1,
+                    duration: 0.25
+                }, "<")
+                .to(rankText, {
+                    angle: 10,
+                    duration: 0.25,
+                    ease: "power4.out",
+                })
+            rankTl.eventCallback("onComplete", () => {
+                const returnBtn = Btn({
+                    text: "Back",
+                    pos: k.vec2(120, k.height() - 90),
+                    color: theme.lightPink,
+                    onClick: () => {
+                        k.go("menu")
+                    },
+                    z: panel.z + 1
+                });
+            })
             if (typoCount === 0) {
                 const cheer = k.add([
                     k.text("PERFECT!", { font: "Kaph", size: 48 }),
@@ -709,7 +821,7 @@ export function registerClicker() {
                     repeat: -1,
                     duration: 1.2,
                     ease: "sine.inOut"
-                });               
+                });
                 gsap.to(cheer.scale, {
                     x: 1,
                     y: 1,
