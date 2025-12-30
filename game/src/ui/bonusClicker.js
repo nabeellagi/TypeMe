@@ -2,6 +2,7 @@ import gsap from "gsap";
 import { k } from "../core/kaplay";
 import { particleTouch } from "../utils/particleTouch";
 import { MonoSynth } from "tone";
+import { theme } from "../core/kaplay/theme";
 
 const BONUS_POOL = [
     { label: "+4", value: 4, weight: 2 },
@@ -36,7 +37,7 @@ export function bonusClicker(onResolve) {
         }),
         k.pos(x, y),
         k.anchor("center"),
-        k.color(bonus.value === "MULTIPLY" ? "#ffd966" : "#7df9ff"),
+        k.color(bonus.value === "MULTIPLY" ? theme.yellow : theme.cyan),
         k.z(1000),
         k.opacity(0),
         k.fixed(),

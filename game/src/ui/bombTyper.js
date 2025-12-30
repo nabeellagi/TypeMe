@@ -1,6 +1,7 @@
 import gsap from "gsap";
 import { k } from "../core/kaplay";
 import { particleTouch } from "../utils/particleTouch";
+import { theme } from "../core/kaplay/theme";
 
 function spawnCrossExplosion(pos) {
     const thickness = 14;
@@ -72,7 +73,7 @@ export function bombTyper(onResolve, onExplode) {
         }),
         k.pos(x, y),
         k.anchor("center"),
-        k.color("#ff3b3b"),
+        k.color(theme.red),
         k.z(1000),
         k.opacity(0),
         k.fixed(),

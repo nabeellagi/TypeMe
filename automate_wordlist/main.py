@@ -56,6 +56,8 @@ def score_word(word):
     unique_letters = set(word)
     repeat_penalty = len(word) - len(unique_letters)
     score -= repeat_penalty  # 1 point per repeated letter
+    
+    score += (len(word)*2)
 
     # Safety clamp (never negative)
     return max(score, 1)
@@ -83,7 +85,7 @@ def filter_words(words, profanity):
 
         buckets[length].append({
             "word": word,
-            "score": score_word(word) * 2
+            "score": score_word(word)
         })
 
     return buckets

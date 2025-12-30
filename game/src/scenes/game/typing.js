@@ -7,6 +7,7 @@ import * as Tone from "tone";
 import { particleTouch } from "../../utils/particleTouch";
 import { bonusClicker } from "../../ui/bonusClicker";
 import { bombTyper } from "../../ui/bombTyper";
+import { theme } from "../../core/kaplay/theme";
 
 /**
 HELPERS
@@ -555,6 +556,7 @@ export function regsiterTyping() {
                 },
                 (value) => {
                     score -= value;
+                    score = Math.max(0, score)
                     scoreText.text = `Your current score : ${score}`;
                     activeBombs = activeBombs.filter(b => b !== bomb);
 
@@ -721,7 +723,7 @@ export function regsiterTyping() {
                     size: 36,
                     font: "Ajelins"
                 }),
-                k.color("#14fbff"),
+                k.color(theme.cyan),
                 k.anchor("center"),
             ]);
 

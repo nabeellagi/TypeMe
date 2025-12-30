@@ -2,6 +2,8 @@ import gsap from "gsap";
 import { k } from "../../core/kaplay";
 import { bgGenerator } from "../../utils/bgGenerator";
 import { particleTouch } from "../../utils/particleTouch";
+import * as Tone from "tone";
+import { theme } from "../../core/kaplay/theme";
 
 /**
 HELPERS
@@ -65,13 +67,37 @@ export function registerClicker() {
         bannedWords = Array.isArray(bannedWords) ? bannedWords : ["FAIL", "TEAR", "ABSOLUTE", "FATAL", "JAMES", "JEANS", "EMPOWER", "ELBOW", "WEATHER"];
         score = typeof score === "number" ? score : 500;
 
+        // SFX
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            maxPolyphony: 6,
+            oscillator: {
+                type: "amsawtooth1"
+            },
+            envelope: {
+                attack: 0.02,
+                decay: 0.15,
+                sustain: 0.25,
+                release: 0.35
+            },
+            volume: -22
+        })
+            .connect(new Tone.Compressor({
+                threshold: -18,
+                ratio: 2.5,
+                attack: 0.01,
+                release: 0.2
+            }))
+            .connect(new Tone.Limiter(-3))  // protects against clipping
+            .toDestination();
+
+
         // debug
         console.log(typoWords[1]);
         console.log(bannedWords[0]);
         console.log(score);
 
-        const damage = typoWords.length;
-        let addScore = Math.ceil(damage / 2);
+        const damage = typoWords.length * 2;
+        // let addScore = Math.ceil(damage / 2);
 
         const spriteLayer = {
             bg: 9,
@@ -205,7 +231,7 @@ export function registerClicker() {
             k.pos(k.width() / 2 - 200, k.height() - 150),
             k.anchor("center"),
             k.opacity(0.8),
-            k.color("#ffd966"),
+            k.color(theme.yellow),
             k.z(spriteLayer.uiLayer)
         ]);
         uis.push(timerText);
@@ -222,14 +248,14 @@ export function registerClicker() {
         const scoreBar_bg = k.add([
             k.rect(scoreBarSize.width, scoreBarSize.height),
             k.pos(k.width() / 2 - 120, k.height() - 152),
-            k.color("#ff3b3b"),
+            k.color(theme.red),
             k.anchor("left"),
             k.z(spriteLayer.uiLayer)
         ]);
         const scoreBar = k.add([
             k.rect(scoreBar_width, scoreBarSize.height),
             k.pos(k.width() / 2 - 120, k.height() - 152),
-            k.color("#ffd966"),
+            k.color(theme.yellow),
             k.anchor("left"),
             k.z(scoreBar_bg.z)
         ]);
@@ -240,7 +266,7 @@ export function registerClicker() {
             k.pos(k.width() / 2 - 20, k.height() - 110),
             k.anchor("center"),
             k.opacity(0.8),
-            k.color("#ffd966"),
+            k.color(theme.yellow),
             k.z(spriteLayer.uiLayer)
         ]);
         // ==== SPRITE ====
@@ -381,6 +407,17 @@ export function registerClicker() {
                 const mousePos = k.mousePos().clone();
                 particleTouch(mousePos.x, mousePos.y);
 
+                const chords = [
+                    ["C5", "E5", "G5"],
+                    ["D5", "G5", "B5"],
+                    ["E5", "G5", "C6"],
+                    ["G4", "C5", "E5"],
+                    ["A4", "C5", "E5"]
+                ];
+
+                const chord = k.choose(chords);
+                synth.triggerAttackRelease(chord, "8n", Tone.now());
+
                 clickFeedback(obj);
                 spawnRipple(obj.pos);
 
@@ -426,6 +463,7 @@ export function registerClicker() {
                         explosionEffect(obj.pos);
 
                         score -= damage;
+                        score = Math.max(0, score);
                         scoreBar_width = getScoreBarWidth(score);
                         scoreBar.width = scoreBar_width;
                         scoreText.text = `${score}/${max_score}`;
@@ -470,6 +508,7 @@ export function registerClicker() {
                         explosionEffect(obj.pos);
 
                         score -= damage;
+                        score = Math.max(0, score);
                         scoreBar_width = getScoreBarWidth(score);
                         scoreBar.width = scoreBar_width;
                         scoreText.text = `${score}/${max_score}`;
