@@ -689,6 +689,7 @@ export function regsiterTyping() {
         // Typo Check
         function registerTypo() {
             typoWords.push(currentWord);
+            bannedWords.push(currentWord);
             k.shake(3);
 
             const chord = ["C3", "D3", "E3", "G3", "A3"];

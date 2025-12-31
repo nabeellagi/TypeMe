@@ -125,7 +125,7 @@ export function registerClicker() {
 
         const spriteLayer = {
             bg: 9,
-            cotton: 100,
+            cotton: 10,
             uiLayer: 11
         };
 
@@ -327,7 +327,34 @@ export function registerClicker() {
             k.color(theme.yellow),
             k.z(spriteLayer.uiLayer)
         ]);
+
         // ==== SPRITE ====
+        const cotton = k.add([
+            k.pos(k.width() / 2, k.height() / 2),
+            k.anchor("center"),
+            k.z(spriteLayer.cotton + 1),
+        ]);
+        const cottonSprite = cotton.add([
+            k.sprite("sitwait"),
+            k.scale(0.095),
+            k.anchor("center"),
+            k.pos(0, 0),
+            {
+                isReactExplode: false,
+                clickCooldown: false
+            },
+        ]);
+        const cottonTouchArea = cotton.add([
+            k.rect(100, 170),
+            k.area(),
+            k.pos(0, 0),
+            k.opacity(0),
+            k.anchor("center")
+        ])
+        idleFloat(cotton, {
+            amplitude: 12,
+            duration: 2
+        });
 
         // ==== CLICKER ENEMY ====
         // Animated Helpers
@@ -404,6 +431,7 @@ export function registerClicker() {
                 ease: "power1.out",
                 onComplete: () => ripple.destroy()
             });
+
         };
         function startDangerBlink(obj) {
             obj.color = k.rgb(255, 80, 80);
@@ -532,6 +560,15 @@ export function registerClicker() {
                         scoreText.text = `${score}/${max_score}`;
 
                         obj.destroy();
+
+                        if (!cottonSprite.isReactExplode) {
+                            cottonSprite.isReactExplode = true;
+                            cottonSprite.use(k.sprite("sitshock"));
+                            k.wait(0.7, () => {
+                                cottonSprite.use(k.sprite("sitwait"));
+                                cottonSprite.isReactExplode = false;
+                            });
+                        }
                     }
                 }
             });
@@ -580,6 +617,15 @@ export function registerClicker() {
                         scoreText.text = `${score}/${max_score}`;
 
                         obj.destroy();
+
+                        if (!cottonSprite.isReactExplode) {
+                            cottonSprite.isReactExplode = true;
+                            cottonSprite.use(k.sprite("sitshock"));
+                            k.wait(0.4, () => {
+                                cottonSprite.use(k.sprite("sitwait"));
+                                cottonSprite.isReactExplode = false;
+                            });
+                        }
                     });
                 }
             });
@@ -756,8 +802,8 @@ export function registerClicker() {
             function getRank(ratio) {
                 if (ratio >= 0.90) return "S";
                 if (ratio >= 0.80) return "A";
-                if (ratio >= 0.75) return "B";
-                if (ratio >= 0.70) return "C";
+                if (ratio >= 0.70) return "B";
+                if (ratio >= 0.60) return "C";
                 return "D";
             }
 
@@ -888,6 +934,128 @@ export function registerClicker() {
                 bannedCount
             });
         }
+
+        // ==== SPRITE HELPERS ====
+        function idleFloat(target, {
+            amplitude = 6,
+            duration = 1.6
+        } = {}) {
+            const baseY = target.pos.y;
+
+            const tl = gsap.to(target.pos, {
+                y: baseY + amplitude,
+                duration,
+                ease: "sine.inOut",
+                yoyo: true,
+                repeat: -1
+            });
+
+            target.onDestroy(() => tl.kill());
+        };
+        function moveCottonRandomly(target, {
+            radius = 160,
+            duration = 0.45
+        } = {}) {
+            const padding = 120;
+
+            const minX = padding;
+            const maxX = k.width() - padding;
+            const minY = padding;
+            const maxY = k.height() - padding - 100;
+
+            const nextX = k.clamp(
+                target.pos.x + k.rand(-radius, radius),
+                minX,
+                maxX
+            );
+
+            const nextY = k.clamp(
+                target.pos.y + k.rand(-radius, radius),
+                minY,
+                maxY
+            );
+
+            gsap.killTweensOf(target.pos);
+
+            gsap.to(target.pos, {
+                x: nextX,
+                y: nextY,
+                duration,
+                ease: "power2.out"
+            });
+        }
+        function spawnPlusScore(pos, value = 2) {
+            const txt = k.add([
+                k.text(`+${value}`, {
+                    font: "Ajelins",
+                    size: 28
+                }),
+                k.pos(pos),
+                k.anchor("center"),
+                k.opacity(1),
+                k.scale(1),
+                k.color(theme.yellow),
+                k.z(999)
+            ]);
+
+            gsap.to(txt.pos, {
+                y: txt.pos.y - 40,
+                duration: 0.6,
+                ease: "power2.out"
+            });
+
+            gsap.to(txt, {
+                opacity: 0,
+                duration: 0.6,
+                ease: "power1.out",
+                onComplete: () => txt.destroy()
+            });
+
+            gsap.fromTo(txt.scale,
+                { x: 0.8, y: 0.8 },
+                { x: 1.1, y: 1.1, duration: 0.15, ease: "back.out(2)" }
+            );
+        }
+        cottonTouchArea.onClick(() => {
+            if (gameState !== "play") return;
+            if (cottonSprite.clickCooldown) return;
+
+            cottonSprite.clickCooldown = true;
+
+            // Score logic
+            score = Math.min(score + 2, max_score);
+
+            scoreBar_width = getScoreBarWidth(score);
+            scoreBar.width = scoreBar_width;
+            scoreText.text = `${score}/${max_score}`;
+
+            // Visual feedback
+            spawnPlusScore(cotton.pos.clone().add(0, -80), 2);
+
+            const ogScale = 0.095;
+
+            gsap.killTweensOf(cottonSprite.scale);
+            gsap.fromTo(
+                cottonSprite.scale,
+                { x: ogScale - 0.01, y: ogScale + 0.02 },
+                { x: ogScale, y: ogScale, duration: 0.4, ease: "back.out(3)" }
+            );
+            cottonSprite.use(k.sprite("sitye"));
+            k.wait(0.3, () => {
+                cottonSprite.use(k.sprite("sitwait"));
+            });
+
+            moveCottonRandomly(cotton, {
+                radius: 180,
+                duration: 0.5
+            });
+
+            synth.triggerAttackRelease("C6", "16n", Tone.now());
+
+            k.wait(0.25, () => {
+                cottonSprite.clickCooldown = false;
+            });
+        });
 
         // ===== UPDATE ===== 
         k.onUpdate(() => {

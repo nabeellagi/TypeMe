@@ -392,6 +392,9 @@ export function registerChoose() {
 
                 if (state.locked) {
                     k.shake(5);
+                    k.play("damage", {
+                        volume: 1.2
+                    });
                     return;
                 }
 

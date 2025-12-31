@@ -240,6 +240,9 @@ export function randomGen({ machine, attempts }) {
 
         // SAFELY QUITS
         function close(result = null) {
+            k.play("afterspin", {
+                volume: 1.2
+            });
             if (finished) return;
             finished = true;
 

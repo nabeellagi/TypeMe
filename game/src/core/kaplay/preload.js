@@ -31,6 +31,10 @@ export function preloadAll() {
     k.loadSprite("sweat", "sprites/sweat.png");
     k.loadSprite("hope", "sprites/hope.png");
 
+    k.loadSprite("sitwait", "sprites/sitwait.png");
+    k.loadSprite("sitshock", "sprites/sitshock.png");
+    k.loadSprite("sitye", "sprites/sitye.png");
+
     k.loadSprite("bg1", "bg/menu.png");
 
     k.loadSprite("btn", "ui/btn.png");
@@ -49,6 +53,8 @@ export function preloadAll() {
     k.loadSound("spin", "sfx/spin.mp3");
     k.loadSound("blink", "sfx/blink.mp3");
     k.loadSound("whistledown", "sfx/whistledown.mp3");
+    k.loadSound("damage", "sfx/damage.mp3");
+    k.loadSound("afterspin", "sfx/afterspin.mp3");
 
     // MUSIC
     k.loadMusic("3am", "song/3am.ogg");
