@@ -146,6 +146,10 @@ export function randomGen({ machine, attempts }) {
             const lenMin = machine.lengthRange[0];
             const lenMax = machine.lengthRange[1];
 
+            // Play sfx
+            k.play("spin", {
+                volume: 1.1
+            });
             const spinTl = gsap.timeline({
                 defaults: { ease: "power2.out" }
             });

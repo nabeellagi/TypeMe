@@ -45,10 +45,12 @@ export function preloadAll() {
 
 
     // SFX
-    k.loadSound("explode", "sfx/explode.mp3")
+    k.loadSound("explode", "sfx/explode.mp3");
+    k.loadSound("spin", "sfx/spin.mp3");
+    k.loadSound("blink", "sfx/blink.mp3");
+    k.loadSound("whistledown", "sfx/whistledown.mp3");
 
     // MUSIC
-    
     k.loadMusic("3am", "song/3am.ogg");
     k.loadMusic("Midnight", "song/Midnight.ogg");
     k.loadMusic("Glitch", "song/glitch.ogg");

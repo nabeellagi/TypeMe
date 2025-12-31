@@ -866,7 +866,10 @@ export function regsiterTyping() {
             tl.to(overlay, {
                 opacity: 1,
                 duration: 0.5,
-                ease: "power2.out"
+                ease: "power2.out",
+                onStart: () => k.play("blink", {
+                    volume: 1.6
+                })
             });
             tl.to(cottonReact.pos, {
                 y: k.height() + 100,

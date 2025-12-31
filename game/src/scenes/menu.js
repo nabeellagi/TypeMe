@@ -211,7 +211,10 @@ export function registerMenu() {
         const creditBtn = Btn({
             text: "Credit",
             pos: k.vec2(k.width() - 460, k.height() / 2 + 30),
-            color: theme.lightPink
+            color: theme.lightPink,
+            onClick: () => {
+                k.go("credit")
+            }
         });
 
         // ===== SET PARTICLE TOUCH =====

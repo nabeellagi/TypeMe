@@ -116,7 +116,7 @@ export function registerClicker() {
         console.log(typoWords);
         console.log(score);
 
-        const damage = typoWords.length * 2;
+        const damage = Math.ceil(typoWords.length * 1.5);
         // let addScore = Math.ceil(damage / 2);
 
         const typoCount = typoWords.length || 0;
@@ -754,10 +754,10 @@ export function registerClicker() {
 
             // RANK
             function getRank(ratio) {
-                if (ratio >= 0.95) return "S";
-                if (ratio >= 0.85) return "A";
-                if (ratio >= 0.70) return "B";
-                if (ratio >= 0.55) return "C";
+                if (ratio >= 0.90) return "S";
+                if (ratio >= 0.80) return "A";
+                if (ratio >= 0.75) return "B";
+                if (ratio >= 0.70) return "C";
                 return "D";
             }
 

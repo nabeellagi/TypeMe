@@ -100,6 +100,7 @@ export function registerChoose() {
             k.scale(1),
             k.opacity(0.6),
             k.color("#93f5ec"),
+            k.z(layers.cotton-1)
         ]);
 
         // Sprite
@@ -231,6 +232,10 @@ export function registerChoose() {
             ]);
 
             flash.opacity = 0.9;
+            k.play("blink", {
+                volume: 1.6
+            });
+
             await k.wait(0.08);
             flash.opacity = 0;
 
@@ -250,6 +255,9 @@ export function registerChoose() {
                     angle: 40,
                     duration: 0.5,
                     ease: "power2.in"
+                });
+                k.play("whistledown", {
+                    volume: 1.2
                 });
                 cotton.onUpdate(() => {
                     t += k.dt();
@@ -287,10 +295,10 @@ export function registerChoose() {
 
             let dir = k.vec2(0, 0);
             if (!controlsLocked) {
-                if (k.isKeyDown("left")) dir.x -= 1;
-                if (k.isKeyDown("right")) dir.x += 1;
-                if (k.isKeyDown("up")) dir.y -= 1;
-                if (k.isKeyDown("down")) dir.y += 1;
+                if (k.isKeyDown("left") || k.isKeyDown("a")) dir.x -= 1;
+                if (k.isKeyDown("right") || k.isKeyDown("d")) dir.x += 1;
+                if (k.isKeyDown("up") || k.isKeyDown("w")) dir.y -= 1;
+                if (k.isKeyDown("down") || k.isKeyDown("s")) dir.y += 1;
 
                 // NORMALIZE MOVE
                 if (dir.len() > 0) {

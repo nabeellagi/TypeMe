@@ -1,5 +1,6 @@
 import gsap from "gsap";
 import { k } from "../core/kaplay";
+import * as Tone from "tone";
 
 export function Btn({
     text = "Button",
@@ -11,6 +12,25 @@ export function Btn({
     z,
     onClick = () => { }
 }) {
+
+    // ==== SFX ====
+    const btnSynth = new Tone.Synth(({
+        oscillator: { type: "triangle" },
+        envelope: {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.2,
+            release: 0.2
+        }
+    })).toDestination();
+    let toneStarted = false;
+
+    async function ensureToneStart() {
+        if (!toneStarted) {
+            await Tone.start();
+            toneStarted = true;
+        }
+    }
 
     // ==== ROOT ====
     const root = k.add([
@@ -33,12 +53,12 @@ export function Btn({
 
     // ==== BG ====
     const bg = root.add([
-    k.sprite("btn"),
-    k.anchor("center"),
-    k.scale(2),
-    k.area(),
-    k.z(-1),
-])
+        k.sprite("btn"),
+        k.anchor("center"),
+        k.scale(2),
+        k.area(),
+        k.z(-1),
+    ])
 
 
     // ==== AUTO SIZE =====
@@ -69,7 +89,10 @@ export function Btn({
     });
 
     // Click
-    bg.onClick(() => {
+    bg.onClick(async () => {
+        await ensureToneStart();
+
+        btnSynth.triggerAttackRelease("C5", "16n");
         gsap.fromTo(
             root.scale,
             { x: 0.95, y: 0.95 },
