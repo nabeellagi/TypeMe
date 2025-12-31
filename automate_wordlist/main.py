@@ -45,6 +45,14 @@ LETTER_FREQUENCY = {
     "x": 4, "q": 4, "j": 4, "z": 4,
 }
 
+LENGTH_MULTIPLIER = {
+    4: 1.2,
+    5: 1.8,
+    6: 2.2,
+    7: 2.8,
+    8: 3.5
+}
+
 def score_word(word):
     score = 0
 
@@ -57,7 +65,9 @@ def score_word(word):
     repeat_penalty = len(word) - len(unique_letters)
     score -= repeat_penalty  # 1 point per repeated letter
     
-    score += (len(word)*2)
+    # score += (len(word)*2)
+    
+    score += int(score * LENGTH_MULTIPLIER[len(word)])
 
     # Safety clamp (never negative)
     return max(score, 1)
@@ -141,7 +151,7 @@ def export_js(buckets, output_path):
 
             for item in words:
                 f.write(
-                    f'  {{ word: "{item["word"]}", score: {item["score"]} }},\n'
+                    f'  {{ word: "{item["word"]}", score: {item["score"]}, reduce:{int(item["score"]/5)}  }},\n'
                 )
 
             f.write("];\n\n")

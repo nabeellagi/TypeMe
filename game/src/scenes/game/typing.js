@@ -77,7 +77,7 @@ function preFilledIndexes(length) {
 
 function getPhaseDuration(length) {
     if (length <= 5) return 85;
-    return 120;
+    return 110;
 }
 
 function getWordTimer(length) {
@@ -439,7 +439,6 @@ export function regsiterTyping() {
             stopPhaseTimer();
 
             inputLocked = false;
-            bannedWords = [];
 
             startPhaseTimer();
             nextWord();
@@ -647,6 +646,7 @@ export function regsiterTyping() {
             const done = boxes.every(b => b.filled);
             if (!done) return;
 
+            bannedWords.push(currentWord);
             stopWordTimer();
 
             score += currentEntry.score;
@@ -694,6 +694,7 @@ export function regsiterTyping() {
             const chord = ["C3", "D3", "E3", "G3", "A3"];
             synth.triggerAttackRelease(chord, "8n", Tone.now());
 
+            typoWords.push()
             correctStreak = 0;
             // bonusCooldown = false;
 
@@ -710,7 +711,7 @@ export function regsiterTyping() {
                 cottonReactSprite.use(k.sprite("serious"));
             });
 
-            score--;
+            score -= currentEntry.reduce;
             score = Math.max(0, score);
             scoreText.text = `Your current score : ${score}`;
         }
@@ -730,8 +731,6 @@ export function regsiterTyping() {
 
         function nextWord() {
             stopWordTimer();
-
-            bannedWords.push(currentWord);
 
             const pool = currentPart === "normal"
                 ? result.normal.wordList

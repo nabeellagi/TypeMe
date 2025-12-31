@@ -113,6 +113,7 @@ export function registerClicker() {
 
         // debug
         console.log(bannedWords);
+        console.log(typoWords);
         console.log(score);
 
         const damage = typoWords.length * 2;
